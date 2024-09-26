@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 import watchdog.events
 import watchdog.observers
 import time
@@ -7,6 +9,7 @@ import pandas as pd
 import numpy as np
 import requests
 import os
+import sys
 import json
 from watchdog.events import FileSystemEvent
 
@@ -15,7 +18,7 @@ from watchdog.events import FileSystemEvent
 def process_data(file):
 	start = 0
 	url = 'http://127.0.0.1:5000/rms'
-	tries = 30
+	tries = 50
 	while tries:
 		try:
 			f = h5py.File(file, 'r')
@@ -24,6 +27,9 @@ def process_data(file):
 			print(f"Retry {tries}")
 			tries -= 1
 			time.sleep(1)
+
+	if tries == 0:
+		return
 
 	rms = []
 	for d in f['data'][:]:
@@ -68,7 +74,7 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 
 
 if __name__ == "__main__":
-	src_path = r"."
+	src_path = sys.argv[1]
 	event_handler = Handler()
 	observer = watchdog.observers.Observer()
 	observer.schedule(event_handler, path=src_path, recursive=True)
