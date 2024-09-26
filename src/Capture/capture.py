@@ -33,6 +33,7 @@ def process_data(file):
 
 	rms = []
 	data = f['data'][:]
+	data = data.astype(np.float32)
 	rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
 	print(len(rms), f['data'].shape) 
 
