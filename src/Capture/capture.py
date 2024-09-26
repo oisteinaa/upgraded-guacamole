@@ -32,12 +32,11 @@ def process_data(file):
 		return
 
 	rms = []
-	for d in f['data'][:]:
-		d = np.nan_to_num(d)
-		data = np.sqrt(np.mean(d ** 2))
-		data = np.nan_to_num(data)
-		rms.append(data)
+	data = f['data'][:]
+	rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
+	print(len(rms), f['data'].shape) 
 
+	# sys.exit(0)
 	start += 100
 	# rmsdf = pd.DataFrame(np.array(rms), columns=['rms'])
 
@@ -74,6 +73,7 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 
 
 if __name__ == "__main__":
+	# process_data(sys.argv[1])
 	src_path = sys.argv[1]
 	event_handler = Handler()
 	observer = watchdog.observers.Observer()
