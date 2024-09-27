@@ -35,7 +35,7 @@ def process_data(file):
 	data = f['data'][:]
 	data = data.astype(np.float32)
 	rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
-	var = np.sqrt(np.var(data, axis=0)).tolist()
+	var = np.var(data, axis=0).tolist()
 	print(rms[0], var[0], f['data'].shape) 
 
 	# sys.exit(0)
