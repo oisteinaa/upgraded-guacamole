@@ -32,21 +32,20 @@ def update_graph_live(n):
     y_var = [item for item in var]
 
     figure = {
-        'data': [go.Scatter(
-            x=x_data,
-            y=y_data,
-            mode='lines+markers'
-        )],
-        'layout': go.Layout(
-            title='Live Data Update',
-            xaxis={'title': 'X-axis'},
-            yaxis={'title': 'Y-axis'}
-        ),
-        'var': [go.Scatter(
-            x=x_data,
-            y=y_var,
-            mode='lines+markers'
-        )],
+        'data': [
+            go.Scatter(
+                x=x_data,
+                y=y_data,
+                mode='lines+markers',
+                name='RMS'
+            ),
+            go.Scatter(
+                x=x_data,
+                y=y_var,
+                mode='lines+markers',
+                name='VAR'
+            )
+        ],
         'layout': go.Layout(
             title='Live Data Update',
             xaxis={'title': 'X-axis'},
