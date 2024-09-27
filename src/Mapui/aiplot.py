@@ -61,7 +61,8 @@ def update_graph_live(n):
     fig.update_layout(
         title='Live Data Update',
         xaxis_title='X-axis',
-        yaxis_title='Y-axis'
+        yaxis_title='Y-axis',
+        uirevision='constant'  # Add uirevision to maintain zoom level
     )
 
     return fig
