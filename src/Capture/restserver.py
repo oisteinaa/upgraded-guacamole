@@ -3,7 +3,7 @@ import json
 
 app = Flask(__name__)
 
-RMS = {'rms': []}
+RMS = {'rms': [], 'var': []}
 
 
 @app.route('/rms')
