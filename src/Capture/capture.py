@@ -35,13 +35,14 @@ def process_data(file):
 	data = f['data'][:]
 	data = data.astype(np.float32)
 	rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
+	var = np.sqrt(np.var(data, axis=0)).tolist()
 	print(len(rms), f['data'].shape) 
 
 	# sys.exit(0)
 	start += 100
 	# rmsdf = pd.DataFrame(np.array(rms), columns=['rms'])
 
-	rms_json = {'rms': rms}
+	rms_json = {'rms': rms, 'var': var}
 	headers = {
 		'Content-type': 'application/json',
 		'Accept': 'application/json'
