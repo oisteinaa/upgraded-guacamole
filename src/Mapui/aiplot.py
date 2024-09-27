@@ -24,15 +24,27 @@ def update_graph_live(n):
     url = 'http://localhost:5000/rms'
     response = requests.get(url)
     data = response.json()["rms"]
+    var = response.json()["var"]
 
     # Assuming the data is a list of dictionaries with 'x' and 'y' keys
     x_data = [i for i, _ in enumerate(data)]
     y_data = [item for item in data]
+    y_var = [item for item in var]
 
     figure = {
         'data': [go.Scatter(
             x=x_data,
             y=y_data,
+            mode='lines+markers'
+        )],
+        'layout': go.Layout(
+            title='Live Data Update',
+            xaxis={'title': 'X-axis'},
+            yaxis={'title': 'Y-axis'}
+        ),
+        'var': [go.Scatter(
+            x=x_data,
+            y=y_var,
             mode='lines+markers'
         )],
         'layout': go.Layout(
