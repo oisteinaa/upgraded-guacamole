@@ -10,8 +10,8 @@ import json
 # import sys
 
 # stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-df = pd.read_excel('Masteliste R12 Svolvar_Kleppstad.xlsx')
-print(df)
+df = pd.read_excel('../../Masteliste R12 Svolvar_Kleppstad.xlsx')
+print(df[['Easting', 'Northing']])
 ls = LineString(df[['Easting', 'Northing']])
 print(ls.length, ls.length / 6250)
 geom = (ls.interpolate(np.multiply(range(0, 6250), ls.length / 6250)))
