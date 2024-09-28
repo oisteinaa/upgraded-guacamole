@@ -42,7 +42,11 @@ def process_data(file):
 	start += 100
 	# rmsdf = pd.DataFrame(np.array(rms), columns=['rms'])
 
-	rms_json = {'rms': rms, 'var': var, 'data': data[:, 1:350].tolist()}
+	rms_json = {
+		'time': time.time(), 
+		'rms': rms, 'var': var, 
+		'data': data[:, 1:350].tolist()
+	}
 	headers = {
 		'Content-type': 'application/json',
 		'Accept': 'application/json'
