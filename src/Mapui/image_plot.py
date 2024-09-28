@@ -14,8 +14,10 @@ from scipy.signal import periodogram
 # Create a Dash app
 # app = dash.Dash(__name__)
 
+LAST_TIME = "" 
 
 def main(app):
+    global LAST_TIME
     # Create a figure using Plotly Graph Objects
     url = 'http://localhost:5000/rms'
     response = requests.get(url)
@@ -43,8 +45,34 @@ def main(app):
 
         dcc.Graph(
             id='periodogram-graph'
+        ),
+        dcc.Interval(
+            id='interval-component',
+            interval=5*1000,  # in milliseconds
+            n_intervals=0
         )
     ])
+
+    @app.callback(Output('live-update-graph', 'figure'),
+                Input('interval-component', 'n_intervals'))
+    def update_graph_live(n):
+        global LAST_TIME
+        # Replace with your REST API endpoint
+        url = 'http://localhost:5000/rms'
+        response = requests.get(url)
+        time_stamp = response.json()["time"]
+
+        if time_stamp == LAST_TIME:
+            print("No new data", time_stamp, LAST_TIME)
+            LAST_TIME = time_stamp
+            return
+    
+        data = np.array(response.json()["data"])
+
+        # Create the initial heatmap figure
+        heatmap_fig = go.Figure(data=go.Heatmap(z=data, colorscale='Gray', zmin=-1000, zmax=1000))
+
+        return heatmap_fig
 
     # Define the callback to update the periodogram based on the selected column
     @app.callback(
