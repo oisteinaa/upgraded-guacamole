@@ -72,7 +72,7 @@ def main(app):
 
         # Update layout
         fig.update_layout(
-            title='Live Data Update',
+            title=f'Live Data Update {time_stamp}',
             xaxis_title='X-axis',
             yaxis_title='Y-axis',
             uirevision='constant'  # Add uirevision to maintain zoom level
