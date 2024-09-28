@@ -30,6 +30,10 @@ def main(app):
         # Replace with your REST API endpoint
         url = 'http://localhost:5000/rms'
         response = requests.get(url)
+        
+        if "time" not in response.json():
+            return
+        
         time_stamp = response.json()["time"]
 
         if time_stamp == LAST_TIME:

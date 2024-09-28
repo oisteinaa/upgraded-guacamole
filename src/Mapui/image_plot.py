@@ -23,6 +23,9 @@ def main(app):
     response = requests.get(url)
     data = np.array(response.json()["data"])
 
+    if data.size == 0:
+        return
+
     # Create the initial heatmap figure
     heatmap_fig = go.Figure(data=go.Heatmap(z=data, colorscale='Gray', zmin=-1000, zmax=1000))
     heatmap_fig.update_layout(height=800)  # Adjust the height as needed
@@ -60,6 +63,10 @@ def main(app):
         # Replace with your REST API endpoint
         url = 'http://localhost:5000/rms'
         response = requests.get(url)
+
+        if "time" not in response.json():
+            return
+
         time_stamp = response.json()["time"]
 
         if time_stamp == LAST_TIME:
