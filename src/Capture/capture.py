@@ -42,7 +42,7 @@ def process_data(file):
 	start += 100
 	# rmsdf = pd.DataFrame(np.array(rms), columns=['rms'])
 
-	rms_json = {'rms': rms, 'var': var}
+	rms_json = {'rms': rms, 'var': var, 'data': data[:, 1:350].tolist()}
 	headers = {
 		'Content-type': 'application/json',
 		'Accept': 'application/json'
@@ -75,15 +75,15 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 
 
 if __name__ == "__main__":
-	# process_data(sys.argv[1])
-	src_path = sys.argv[1]
-	event_handler = Handler()
-	observer = watchdog.observers.Observer()
-	observer.schedule(event_handler, path=src_path, recursive=True)
-	observer.start()
-	try:
-		while True:
-			time.sleep(1)
-	except KeyboardInterrupt:
-		observer.stop()
-	observer.join()
+	process_data(sys.argv[1])
+	# src_path = sys.argv[1]
+	# event_handler = Handler()
+	# observer = watchdog.observers.Observer()
+	# observer.schedule(event_handler, path=src_path, recursive=True)
+	# observer.start()
+	# try:
+	# 	while True:
+	# 		time.sleep(1)
+	# except KeyboardInterrupt:
+	# 	observer.stop()
+	# observer.join()

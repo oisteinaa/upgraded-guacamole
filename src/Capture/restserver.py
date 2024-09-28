@@ -1,9 +1,11 @@
+#! /usr/bin/env python3
+
 from flask import Flask, jsonify, request
 import json
 
 app = Flask(__name__)
 
-RMS = {'rms': [], 'var': []}
+RMS = {'rms': [], 'var': [], 'data': []}  
 
 
 @app.route('/rms')
