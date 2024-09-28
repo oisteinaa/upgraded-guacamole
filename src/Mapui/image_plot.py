@@ -53,7 +53,7 @@ def main(app):
         )
     ])
 
-    @app.callback(Output('live-update-graph', 'figure'),
+    @app.callback(Output('heatmap-graph', 'figure'),
                 Input('interval-component', 'n_intervals'))
     def update_graph_live(n):
         global LAST_TIME
