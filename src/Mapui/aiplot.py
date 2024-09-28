@@ -33,6 +33,7 @@ def main(app):
         time_stamp = response.json()["time"]
 
         if time_stamp == LAST_TIME:
+            print("No new data", time_stamp, LAST_TIME)
             LAST_TIME = time_stamp
             return
     
