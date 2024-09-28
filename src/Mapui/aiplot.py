@@ -11,6 +11,7 @@ LAST_TIME = ""
 
 
 def main(app):
+    global LAST_TIME
     # app = dash.Dash(__name__, server=server_app, url_base_pathname='/rms/')
 
     app.layout = html.Div([
