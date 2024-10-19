@@ -9,11 +9,18 @@ from shapely.geometry import LineString
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import requests
+from flask_caching import Cache
 
 # import sys
 
 def main(app):
     global geom
+    
+    cache = Cache(app.server, config={
+        'CACHE_TYPE': 'simple',  # You can use 'redis' or 'memcached' for production
+        'CACHE_DEFAULT_TIMEOUT': 300  # Cache timeout in seconds
+    })
+     
     # stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
     df = pd.read_excel('../../Masteliste R12 Svolvar_Kleppstad.xlsx')
     mast_geom = df[['Easting', 'Northing']].values
@@ -33,6 +40,13 @@ def main(app):
             )
         ])
     )
+    
+    # Cache the response from the REST server
+    @cache.memoize()
+    def get_rms_data():
+        url = 'http://127.0.0.1:5000/rms'
+        r = requests.get(url)
+        return r.json()
 
 
     # Multiple components can update everytime interval gets fired.
