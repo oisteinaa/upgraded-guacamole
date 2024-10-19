@@ -18,7 +18,7 @@ def main(app):
         dcc.Graph(id='live-update-graph'),
         dcc.Interval(
             id='interval-component',
-            interval=5*1000,  # in milliseconds
+            interval=10*1000,  # in milliseconds
             n_intervals=0
         )
     ])
@@ -50,6 +50,8 @@ def main(app):
         y_data = [item for item in data]
         y_var = [item for item in var]
 
+        print(len(x_data), len(y_data), len(y_var))
+
         # Create subplots
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
                             subplot_titles=('RMS', 'VAR'))
@@ -77,11 +79,14 @@ def main(app):
 
         # Update layout
         fig.update_layout(
+            template='plotly',  # Ensure this is a valid template name
             title=f'Live Data Update {time_stamp}',
             xaxis_title='X-axis',
             yaxis_title='Y-axis',
             uirevision='constant'  # Add uirevision to maintain zoom level
         )
+
+        # print(fig, )
 
         return fig
     return app

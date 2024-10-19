@@ -28,7 +28,7 @@ def main(app):
             dcc.Graph(id='live-update-map', style={'width': '90vh', 'height': '90vh'}),
             dcc.Interval(
                 id='interval-component',
-                interval=10 * 500,  # in milliseconds
+                interval=10 * 1000,  # in milliseconds
                 n_intervals=0
             )
         ])
