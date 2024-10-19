@@ -13,6 +13,7 @@ import requests
 # import sys
 
 def main(app):
+    global geom
     # stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
     df = pd.read_excel('../../Masteliste R12 Svolvar_Kleppstad.xlsx')
     mast_geom = df[['Easting', 'Northing']].values
