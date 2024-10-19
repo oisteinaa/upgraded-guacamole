@@ -55,7 +55,7 @@ def main(app):
     def update_graph_live(_):
         global geom
         
-        rms_json = get_rms_data()
+        rms_json = get_rms_data()['rms']
 
         rmsdf = pd.DataFrame(rms_json)
         rmsdf.columns = ['rms']
