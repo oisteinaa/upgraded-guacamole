@@ -6,6 +6,7 @@ from dash.dependencies import Input, Output
 import numpy as np
 import plotly.graph_objs as go
 import requests
+import msgpack
 from scipy.signal import periodogram
 
 # Sample data for demonstration
@@ -19,12 +20,18 @@ LAST_TIME = ""
 def main(app):
     global LAST_TIME
     # Create a figure using Plotly Graph Objects
-    url = 'http://localhost:5000/rms'
+    url = 'http://localhost:5000/rawdata'
+
     response = requests.get(url)
-    data = np.array(response.json()["data"])
+    print(response)
+    buf = msgpack.unpackb(response.content, raw=False)
+    shape = buf['shape'] 
+    data = np.array(buf['data']).reshape(shape)
 
     if data.size == 0:
         return
+
+    print('Shape', data.shape)
 
     # Create the initial heatmap figure
     heatmap_fig = go.Figure(data=go.Heatmap(z=data, colorscale='Gray', zmin=-1000, zmax=1000))
@@ -61,20 +68,22 @@ def main(app):
     def update_graph_live(n):
         global LAST_TIME
         # Replace with your REST API endpoint
-        url = 'http://localhost:5000/rms'
+        url = 'http://localhost:5000/rawdata'
         response = requests.get(url)
 
-        if "time" not in response.json():
-            return
+        # if "time" not in response.json():
+        #     return
 
-        time_stamp = response.json()["time"]
+        # time_stamp = response.json()["time"]
 
-        if time_stamp == LAST_TIME:
-            print("No new data", time_stamp, LAST_TIME)
-            LAST_TIME = time_stamp
-            return
+        # if time_stamp == LAST_TIME:
+        #     print("No new data", time_stamp, LAST_TIME)
+        #     LAST_TIME = time_stamp
+        #     return
     
-        data = np.array(response.json()["data"])
+        buf = msgpack.unpackb(response.content, raw=False)
+        shape = buf['shape'] 
+        data = np.array(buf['data']).reshape(shape)
 
         # Create the initial heatmap figure
         heatmap_fig = go.Figure(data=go.Heatmap(z=data, colorscale='Gray', zmin=-1000, zmax=1000))

@@ -11,13 +11,14 @@ import requests
 import os
 import sys
 import json
+import msgpack
+import gzip
 from watchdog.events import FileSystemEvent
 
 
 
 def process_data(file):
 	start = 0
-	url = 'http://127.0.0.1:5000/rms'
 	tries = 50
 	while tries:
 		try:
@@ -38,10 +39,14 @@ def process_data(file):
 	var = np.mean(data, axis=0).tolist()
 	print(rms[0], var[0], f['data'].shape) 
 
+	# serialized = msgpack.packb(data.tolist())
+	# compressed = gzip.compress(serialized)
+
 	# sys.exit(0)
 	start += 100
 	# rmsdf = pd.DataFrame(np.array(rms), columns=['rms'])
 
+	url = 'http://127.0.0.1:5000/rms'
 	rms_json = {
 		'time': time.time(), 
 		'rms': rms, 'var': var, 
@@ -52,7 +57,23 @@ def process_data(file):
 		'Accept': 'application/json'
 	}
 	requests.post(url, json=json.dumps(rms_json), headers=headers)
+	
+	url = 'http://127.0.0.1:5000/rawdata'
+	headers = {'Content-Type': 'application/octet-stream'}
 
+	# Include the shape of the data in the payload
+	data = f['data'][:, 1:1000]
+	payload = {
+		'shape': data.shape,
+		'data': data.tolist()
+	}
+	
+	# Serialize the payload using msgpack
+	serialized_payload = msgpack.packb(payload)
+	
+	requests.post(url, data=serialized_payload, headers=headers)
+
+	
 class Handler(watchdog.events.PatternMatchingEventHandler):
 	def __init__(self):
 		# Set the patterns for PatternMatchingEventHandler
