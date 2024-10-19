@@ -62,7 +62,7 @@ def process_data(file):
 	headers = {'Content-Type': 'application/octet-stream'}
 
 	# Include the shape of the data in the payload
-	data = f['data'][:, 1:1000]
+	data = f['data'][:, ::4]
 	payload = {
 		'shape': data.shape,
 		'data': data.tolist()
