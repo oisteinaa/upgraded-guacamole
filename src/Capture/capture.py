@@ -56,6 +56,12 @@ def process_data(file):
 class Handler(watchdog.events.PatternMatchingEventHandler):
 	def __init__(self):
 		# Set the patterns for PatternMatchingEventHandler
+  
+		for file in os.listdir(src_path):
+			if file.endswith('.hdf5'):
+				process_data(os.path.join(src_path, file))
+				time.sleep(5)
+  
 		watchdog.events.PatternMatchingEventHandler.__init__(self, patterns=['*.hdf5'],
 															ignore_directories=True, case_sensitive=True)
 
