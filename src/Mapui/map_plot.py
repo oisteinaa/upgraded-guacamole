@@ -38,6 +38,7 @@ def main(app):
     @app.callback(Output('live-update-map', 'figure'),
             Input('interval-component', 'n_intervals'))
     def update_graph_live(_):
+        global geom
         url = 'http://127.0.0.1:5000/rms'
         r = requests.get(url)
         #print(r.json())
