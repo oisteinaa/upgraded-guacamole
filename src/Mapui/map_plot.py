@@ -59,6 +59,9 @@ def main(app):
 
             return fig
 
+        if len(rmsdf) != len(geom):
+            geom = [ls.interpolate(distance) for distance in np.linspace(0, ls.length, len(rmsdf))]
+            
         gdf = gpd.GeoDataFrame(rmsdf, geometry=geom, crs="EPSG:32633")
         #print(np.multiply(range(0, rmsdf.shape[1]), ls.length / rmsdf.shape[1]))
         gdf = gdf.to_crs(crs="EPSG:4326")
