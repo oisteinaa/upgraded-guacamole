@@ -45,7 +45,7 @@ def process_data(file):
 	rms_json = {
 		'time': time.time(), 
 		'rms': rms, 'var': var, 
-		'data': data[:, 1:350].tolist()
+		# 'data': data[:, 1:350].tolist()
 	}
 	headers = {
 		'Content-type': 'application/json',
