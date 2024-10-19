@@ -32,6 +32,7 @@ def main(app):
         response = requests.get(url)
         
         if "time" not in response.json():
+            print("No time in response")
             return
         
         time_stamp = response.json()["time"]
