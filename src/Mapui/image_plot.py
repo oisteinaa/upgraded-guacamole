@@ -19,7 +19,7 @@ from flask_caching import Cache
 
 LAST_TIME = "" 
 
-@cache.memoize()
+@Cache.memoize()
 def get_data(url):
     r = requests.get(url)
     return r.json()
