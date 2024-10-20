@@ -8,6 +8,8 @@ import plotly.graph_objs as go
 import requests
 import msgpack
 from scipy.signal import periodogram
+from flask_caching import Cache
+
 
 # Sample data for demonstration
 # data = np.random.rand(100, 100)
@@ -17,12 +19,23 @@ from scipy.signal import periodogram
 
 LAST_TIME = "" 
 
+@cache.memoize()
+def get_data(url):
+    r = requests.get(url)
+    return r.json()
+
 def main(app):
     global LAST_TIME
+    
+    cache = Cache(app.server, config={
+        'CACHE_TYPE': 'simple',     # You can use 'redis' or 'memcached' for production
+        'CACHE_DEFAULT_TIMEOUT': 9  # Cache timeout in seconds
+    })
+    
     # Create a figure using Plotly Graph Objects
     url = 'http://localhost:5000/rawdata'
 
-    response = requests.get(url)
+    response = get_data(url)
     print(response)
     buf = msgpack.unpackb(response.content, raw=False)
     shape = buf['shape'] 
@@ -69,7 +82,7 @@ def main(app):
         global LAST_TIME
         # Replace with your REST API endpoint
         url = 'http://localhost:5000/rawdata'
-        response = requests.get(url)
+        response = get_data(url)
 
         # if "time" not in response.json():
         #     return

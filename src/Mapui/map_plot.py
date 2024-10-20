@@ -18,7 +18,7 @@ def main(app):
     
     cache = Cache(app.server, config={
         'CACHE_TYPE': 'simple',  # You can use 'redis' or 'memcached' for production
-        'CACHE_DEFAULT_TIMEOUT': 300  # Cache timeout in seconds
+        'CACHE_DEFAULT_TIMEOUT': 9  # Cache timeout in seconds
     })
      
     # stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']

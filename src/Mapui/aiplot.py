@@ -3,6 +3,7 @@
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
+from flask_caching import Cache
 import requests
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
@@ -12,7 +13,11 @@ LAST_TIME = ""
 
 def main(app):
     global LAST_TIME
-    # app = dash.Dash(__name__, server=server_app, url_base_pathname='/rms/')
+    
+    cache = Cache(app.server, config={
+        'CACHE_TYPE': 'simple',     # You can use 'redis' or 'memcached' for production
+        'CACHE_DEFAULT_TIMEOUT': 9  # Cache timeout in seconds
+    })
 
     app.layout = html.Div([
         dcc.Graph(id='live-update-graph'),
@@ -22,14 +27,22 @@ def main(app):
             n_intervals=0
         )
     ])
+    
+    
+    # Cache the response from the REST server
+    @cache.memoize()
+    def get_rms_data():
+        url = 'http://localhost:5000/rms'
+        r = requests.get(url)
+        return r.json()
+    
 
     @app.callback(Output('live-update-graph', 'figure'),
                 Input('interval-component', 'n_intervals'))
     def update_graph_live(n):
         global LAST_TIME
-        # Replace with your REST API endpoint
-        url = 'http://localhost:5000/rms'
-        response = requests.get(url)
+
+        response = get_rms_data()
         
         if "time" not in response.json():
             print("No time in response")
@@ -92,4 +105,6 @@ def main(app):
     return app
 
 if __name__ == '__main__':
+    app = dash.Dash(__name__, server=server_app, url_base_pathname='/rms/')
+    app = main(app)
     app.run_server(debug=True)
