@@ -3,21 +3,16 @@
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
-from flask_caching import Cache
 import requests
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
+from config import cache
 
 LAST_TIME = ""
 
 
 def main(app):
     global LAST_TIME
-    
-    cache = Cache(app.server, config={
-        'CACHE_TYPE': 'simple',     # You can use 'redis' or 'memcached' for production
-        'CACHE_DEFAULT_TIMEOUT': 9  # Cache timeout in seconds
-    })
 
     app.layout = html.Div([
         dcc.Graph(id='live-update-graph'),
@@ -28,7 +23,7 @@ def main(app):
         )
     ])
     
-    
+
     # Cache the response from the REST server
     @cache.memoize()
     def get_rms_data():
@@ -44,19 +39,19 @@ def main(app):
 
         response = get_rms_data()
         
-        if "time" not in response.json():
+        if "time" not in response:
             print("No time in response")
             return
         
-        time_stamp = response.json()["time"]
+        time_stamp = response["time"]
 
         if time_stamp == LAST_TIME:
             print("No new data", time_stamp, LAST_TIME)
             LAST_TIME = time_stamp
             return
     
-        data = response.json()["rms"]
-        var = response.json()["var"]
+        data = response["rms"]
+        var = response["var"]
 
         # Assuming the data is a list of dictionaries with 'x' and 'y' keys
         x_data = [i for i, _ in enumerate(data)]

@@ -8,8 +8,7 @@ import plotly.graph_objs as go
 import requests
 import msgpack
 from scipy.signal import periodogram
-from flask_caching import Cache
-
+from config import cache
 
 # Sample data for demonstration
 # data = np.random.rand(100, 100)
@@ -23,33 +22,29 @@ LAST_TIME = ""
 def main(app):
     global LAST_TIME
     
-    cache = Cache(app.server, config={
-        'CACHE_TYPE': 'simple',     # You can use 'redis' or 'memcached' for production
-        'CACHE_DEFAULT_TIMEOUT': 9  # Cache timeout in seconds
-    })
-    
     @cache.memoize()
     def get_data(url):
         r = requests.get(url)
-        return r.json()
+        return r
 
+    data = None
     # Create a figure using Plotly Graph Objects
-    url = 'http://localhost:5000/rawdata'
+    # url = 'http://localhost:5000/rawdata'
 
-    response = get_data(url)
-    print(response)
-    buf = msgpack.unpackb(response.content, raw=False)
-    shape = buf['shape'] 
-    data = np.array(buf['data']).reshape(shape)
+    # response = get_data(url)
+    # print(response)
+    # buf = msgpack.unpackb(response.content, raw=False)
+    # shape = buf['shape'] 
+    # data = np.array(buf['data']).reshape(shape)
 
-    if data.size == 0:
-        return
+    # if data.size == 0:
+    #     return
 
-    print('Shape', data.shape)
+    # print('Shape', data.shape)
 
     # Create the initial heatmap figure
-    heatmap_fig = go.Figure(data=go.Heatmap(z=data, colorscale='Gray', zmin=-1000, zmax=1000))
-    heatmap_fig.update_layout(height=800)  # Adjust the height as needed
+    # heatmap_fig = go.Figure(data=go.Heatmap(z=data, colorscale='Gray', zmin=-1000, zmax=1000))
+    # heatmap_fig.update_layout(height=800)  # Adjust the height as needed
 
     # Define the layout of the app
     app.layout = html.Div(children=[
@@ -57,13 +52,13 @@ def main(app):
 
         dcc.Graph(
             id='heatmap-graph',
-            figure=heatmap_fig
+            figure=go.Figure()
         ),
 
         html.Label('Select Channel:'),
         dcc.Dropdown(
             id='column-selector',
-            options=[{'label': f'CHannel {i}', 'value': i} for i in range(data.shape[1])],
+            options=[{'label': f'CHannel {i}', 'value': i} for i in range(1000)],
             value=0
         ),
 
@@ -80,7 +75,7 @@ def main(app):
     @app.callback(Output('heatmap-graph', 'figure'),
                 Input('interval-component', 'n_intervals'))
     def update_graph_live(n):
-        global LAST_TIME
+        global LAST_TIME, data
         # Replace with your REST API endpoint
         url = 'http://localhost:5000/rawdata'
         response = get_data(url)
@@ -101,6 +96,7 @@ def main(app):
 
         # Create the initial heatmap figure
         heatmap_fig = go.Figure(data=go.Heatmap(z=data, colorscale='Gray', zmin=-1000, zmax=1000))
+        heatmap_fig.update_layout(height=800)  # Adjust the height as needed
 
         return heatmap_fig
 
@@ -111,6 +107,9 @@ def main(app):
     )
     def update_periodogram(selected_column):
         # Extract the selected column data
+        if data is None:
+            return go.Figure()
+        
         column_data = data[:, selected_column]
 
         # Compute the periodogram

@@ -1,22 +1,30 @@
 #! /usr/bin/env python3
 
 from flask import Flask, render_template
+from flask_caching import Cache
 import dash
 import aiplot
 import image_plot
 import map_plot
+from config import app
 
-app = Flask(__name__)
 
+print("Initializing dash apps")
 # Initialize Dash app for RMS
+
+print("Initializing rms app")
 rms_app = dash.Dash("rms_app", server=app, url_base_pathname='/rms/')
 aiplot.main(rms_app)
 
+print("Initializing image app")
 image_app = dash.Dash("image_app", server=app, url_base_pathname='/data/')
 image_plot.main(image_app)
 
+print("Initializing map app")
 map_app = dash.Dash("map_app", server=app, url_base_pathname='/maps/')
 map_plot.main(map_app)
+
+print("Dash apps initialized")
 
 @app.route('/')
 def home():
@@ -35,4 +43,5 @@ def maps():
     return map_app.index()
 
 if __name__ == '__main__':
+    print("Running app")
     app.run(port=8050, debug=True)
