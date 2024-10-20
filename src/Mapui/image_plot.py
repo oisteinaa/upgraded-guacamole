@@ -19,10 +19,6 @@ from flask_caching import Cache
 
 LAST_TIME = "" 
 
-@Cache.memoize()
-def get_data(url):
-    r = requests.get(url)
-    return r.json()
 
 def main(app):
     global LAST_TIME
@@ -32,6 +28,11 @@ def main(app):
         'CACHE_DEFAULT_TIMEOUT': 9  # Cache timeout in seconds
     })
     
+    @cache.memoize()
+    def get_data(url):
+        r = requests.get(url)
+        return r.json()
+
     # Create a figure using Plotly Graph Objects
     url = 'http://localhost:5000/rawdata'
 
