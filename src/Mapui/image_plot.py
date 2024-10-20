@@ -107,6 +107,7 @@ def main(app):
     )
     def update_periodogram(selected_column):
         # Extract the selected column data
+        global data
         if data is None:
             return go.Figure()
         
