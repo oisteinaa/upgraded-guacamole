@@ -28,6 +28,12 @@ def main(app):
 
     app.layout = html.Div(
         html.Div([
+            html.Div([
+                dcc.Graph(id='gauge-1', style={'display': 'inline-block', 'width': '20vh', 'height': '20vh'}),
+                dcc.Graph(id='gauge-2', style={'display': 'inline-block', 'width': '20vh', 'height': '20vh'}),
+                dcc.Graph(id='gauge-3', style={'display': 'inline-block', 'width': '20vh', 'height': '20vh'}),
+                dcc.Graph(id='gauge-4', style={'display': 'inline-block', 'width': '20vh', 'height': '20vh'}),
+            ]),
             dcc.Graph(id='live-update-map', style={'width': '90vh', 'height': '90vh'}),
             dcc.Interval(
                 id='interval-component',
@@ -44,6 +50,26 @@ def main(app):
         r = requests.get(url)
         return r.json()
 
+    @app.callback(
+        [Output('gauge-1', 'figure'),
+            Output('gauge-2', 'figure'),
+            Output('gauge-3', 'figure'),
+            Output('gauge-4', 'figure')],
+        Input('interval-component', 'n_intervals')
+    )
+    def update_gauges(n):
+        rms_split = get_rms_data()['rms_means']
+        
+        gauges = []
+        for i in range(4):
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=rms_split[i],
+                gauge={'axis': {'range': [None, 6000]}}
+            ))
+            gauges.append(fig)
+        
+        return gauges
 
     # Multiple components can update everytime interval gets fired.
     @app.callback(Output('live-update-map', 'figure'),
