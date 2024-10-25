@@ -26,23 +26,22 @@ def main(app):
     geom = [ls.interpolate(distance) for distance in np.linspace(0, ls.length, 14874)]
 
 
-    app.layout = html.Div(
-        html.Div([
-            html.Div([
-                dcc.Graph(id='gauge-1', style={'display': 'inline-block', 'width': '20vh', 'height': '20vh'}),
-                dcc.Graph(id='gauge-2', style={'display': 'inline-block', 'width': '20vh', 'height': '20vh'}),
-                dcc.Graph(id='gauge-3', style={'display': 'inline-block', 'width': '20vh', 'height': '20vh'}),
-                dcc.Graph(id='gauge-4', style={'display': 'inline-block', 'width': '20vh', 'height': '20vh'}),
-            ]),
-            dcc.Graph(id='live-update-map', style={'width': '90vh', 'height': '90vh'}),
+    app.layout = html.Div([
+        html.Div(children=[
+            dcc.Graph(id=f'gauge-{i+1}', style={'flex': '1 1 20%', 'min-width': '300px'}) for i in range(8)
+        ], 
+        style={'padding': '0', 'flex': '1', 'display': 'flex', 'flex-wrap': 'wrap'}),
+
+        html.Div([   
+            dcc.Graph(id='live-update-map', style={'height': '60vh', 'margin-top': '10px'}),
             dcc.Interval(
                 id='interval-component',
                 interval=10 * 1000,  # in milliseconds
                 n_intervals=0
             )
         ])
-    )
-    
+    ], style={'padding': '10px 5px'})
+
     # Cache the response from the REST server
     @cache.memoize()
     def get_rms_data():
@@ -51,22 +50,29 @@ def main(app):
         return r.json()
 
     @app.callback(
-        [Output('gauge-1', 'figure'),
-            Output('gauge-2', 'figure'),
-            Output('gauge-3', 'figure'),
-            Output('gauge-4', 'figure')],
+        [Output(f'gauge-{i+1}', 'figure') for i in range(8)],
         Input('interval-component', 'n_intervals')
     )
     def update_gauges(n):
         rms_split = get_rms_data()['rms_means']
         
         gauges = []
-        for i in range(4):
+        for i in range(8):
             fig = go.Figure(go.Indicator(
-                mode="gauge+number",
+                mode="gauge+number+delta",
+                delta = {'relative': True},
                 value=rms_split[i],
-                gauge={'axis': {'range': [None, 6000]}}
+                gauge={
+                    'axis': {'range': [None, 4000]},
+                    'bar': {'color': "black", "thickness": 0.2},
+                    'steps': [
+                        {'range': [0, 2500], 'color': "green"},
+                        {'range': [2500, 3500], 'color': "yellow"},
+                        {'range': [3500, 4000], 'color': "red"}
+                    ]
+                }
             ))
+            fig.update_layout(height=250)
             gauges.append(fig)
         
         return gauges
