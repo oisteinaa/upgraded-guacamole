@@ -6,6 +6,7 @@ import dash
 import aiplot
 import image_plot
 import map_plot
+import rms_strip
 from config import app
 
 
@@ -15,6 +16,10 @@ print("Initializing dash apps")
 print("Initializing rms app")
 rms_app = dash.Dash("rms_app", server=app, url_base_pathname='/rms/')
 aiplot.main(rms_app)
+
+print("Initializing rms app")
+rms_strip_app = dash.Dash("rms_strip_app", server=app, url_base_pathname='/rms_strip/')
+rms_strip.main(rms_strip_app)
 
 print("Initializing image app")
 image_app = dash.Dash("image_app", server=app, url_base_pathname='/data/')
@@ -34,6 +39,10 @@ def home():
 def rms():
     return rms_app.index()
 
+@app.route('/rms_strip')
+def rms_strip():
+    return rms_strip_app.index()
+
 @app.route('/data')
 def data():
     return image_app.index()
@@ -44,4 +53,4 @@ def maps():
 
 if __name__ == '__main__':
     print("Running app")
-    app.run(port=8050, debug=True)
+    app.run(host='0.0.0.0', port=8050, debug=False)

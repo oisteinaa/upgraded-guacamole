@@ -109,7 +109,7 @@ def main(app):
         gdf = gdf.to_crs(crs="EPSG:4326")
 
         fig = px.scatter_mapbox(gdf, lat=gdf.geometry.y, lon=gdf.geometry.x, color='rms', size='rms',
-                                range_color=[1500, 6000],
+                                range_color=[5500, 18000],
                                 zoom=11,
                                 mapbox_style="open-street-map")
         fig.update_layout(uirevision='rms')
