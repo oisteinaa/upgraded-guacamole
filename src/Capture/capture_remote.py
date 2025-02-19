@@ -14,6 +14,7 @@ import json
 import msgpack
 import gzip
 from watchdog.events import FileSystemEvent
+import zmq
 
 
 
@@ -87,11 +88,11 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 		# 		process_data(os.path.join(src_path, file))
 		# 		time.sleep(2)
   
-		watchdog.events.PatternMatchingEventHandler.__init__(self, patterns=['*'],
+		watchdog.events.PatternMatchingEventHandler.__init__(self, patterns=['*.hdf5'],
 															ignore_directories=True, case_sensitive=True)
 
-	def on_any_event(self, event):
-		print(event)
+	# def on_any_event(self, event):
+		# print(event)
 
 	# def on_created(self, event):
 	# 	print(event.src_path)
@@ -104,8 +105,28 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 	# 	print("Watchdog received modified event - % s." % event.src_path)
 	#	# Event is modified, you can process it now
  
-	# def on_moved(self, event):
-	# 	print(f"File moved from {event.src_path} to {event.dest_path}")
+	def on_moved(self, event):
+		print(f"File moved from {event.src_path} to {event.dest_path}")
+		context = zmq.Context()
+		socket = context.socket(zmq.PUSH)
+		socket.connect("tcp://192.168.1.174:12345")
+
+		# # if isinstance(event, FileSystemEvent):
+		# # 	if hasattr(event, 'src_path'):
+		# # 		message = {'src_path': event.src_path}
+		# # 		if hasattr(event, 'dest_path'):
+		# 			# message['dest_path'] = event.dest_path
+
+		message = {'src_path': event.src_path}
+		message['dest_path'] = event.dest_path
+  
+		print(f'Send zmq message: {message}')
+		socket.send_json(message)
+		print(f'Message sent')
+		
+		# socket.close()
+		# context.term()
+
 		# Process(target=process_data, args=(f'{event.dest_path}',)).start()
 
 	# def on_closed(self, event):
