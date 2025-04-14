@@ -8,7 +8,7 @@ import plotly.graph_objs as go
 from config import cache
 
 # Initialize rms_data_list with 50 arrays of zeroes
-rms_data_list = [np.zeros(8356) for _ in range(50)]
+rms_data_list = [np.zeros(7735) for _ in range(50)]
 old_time = 0
 
 
