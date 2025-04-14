@@ -38,7 +38,8 @@ def main(app):
                 id='interval-component',
                 interval=10 * 1000,  # in milliseconds
                 n_intervals=0
-            )
+            ),
+            html.Div(id='click-output', style={'margin-top': '20px', 'font-size': '16px'})
         ])
     ], style={'padding': '10px 5px'})
 
