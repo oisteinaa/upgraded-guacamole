@@ -90,7 +90,7 @@ def main(app):
         # Update layout
         fig.update_layout(
             template='plotly',  # Ensure this is a valid template name
-            title=f'Live Data Update {datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d %H:%M:%S")}',
+            title=f'Live Data Update {datetime.datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d %H:%M:%S")}',
             xaxis_title='X-axis',
             yaxis_title='Y-axis',
             uirevision='constant'  # Add uirevision to maintain zoom level

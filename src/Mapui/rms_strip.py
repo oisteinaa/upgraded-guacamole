@@ -75,7 +75,7 @@ def main(app):
             
             fig.update_layout(
                 height=800,
-                title=f'Live Data Update {datetime.fromtimestamp(old_time).strftime("%Y-%m-%d %H:%M:%S")}', 
+                title=f'Live Data Update {datetime.datetime.fromtimestamp(old_time).strftime("%Y-%m-%d %H:%M:%S")}', 
                 uirevision='rms'
             )
             

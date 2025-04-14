@@ -120,7 +120,7 @@ def main(app):
                                 zoom=11,
                                 mapbox_style="open-street-map")
         fig.update_layout(
-            title=f'Live Data Update {datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d %H:%M:%S")}',    
+            title=f'Live Data Update {datetime.datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d %H:%M:%S")}',    
             uirevision='rms'
         )
 
