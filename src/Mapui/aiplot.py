@@ -4,6 +4,7 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import requests
+import datetime
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 from config import cache
@@ -89,7 +90,7 @@ def main(app):
         # Update layout
         fig.update_layout(
             template='plotly',  # Ensure this is a valid template name
-            title=f'Live Data Update {time_stamp}',
+            title=f'Live Data Update {datetime.fromtimestamp(time_stamp).strftime('%Y-%m-%d %H:%M:%S')}',
             xaxis_title='X-axis',
             yaxis_title='Y-axis',
             uirevision='constant'  # Add uirevision to maintain zoom level

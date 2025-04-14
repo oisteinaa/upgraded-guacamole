@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import requests
+import datetime
 import numpy as np
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
@@ -72,7 +73,11 @@ def main(app):
                 colorscale='Viridis'
             ))
             
-            fig.update_layout(height=800, uirevision='rms')
+            fig.update_layout(
+                height=800,
+                title=f'Live Data Update {datetime.fromtimestamp(old_time).strftime('%Y-%m-%d %H:%M:%S')}', 
+                uirevision='rms'
+            )
             
             return fig
 

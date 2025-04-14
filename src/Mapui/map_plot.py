@@ -9,6 +9,7 @@ from shapely.geometry import LineString
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import requests
+import datetime
 from config import cache
 
 # import sys
@@ -57,7 +58,8 @@ def main(app):
         Input('interval-component', 'n_intervals')
     )
     def update_gauges(n):
-        rms_split = get_rms_data()['rms_means']
+        response = get_rms_data()
+        rms_split = response['rms_means']
         
         gauges = []
         for i in range(8):
@@ -86,7 +88,9 @@ def main(app):
     def update_graph_live(_):
         global geom
         
-        rms_json = get_rms_data()['rms']
+        response = get_rms_data()
+        rms_json = response['rms']
+        time_stamp = response["time"]
 
         rmsdf = pd.DataFrame(rms_json)
         rmsdf.columns = ['rms']
@@ -115,7 +119,10 @@ def main(app):
                                 range_color=[5500, 18000],
                                 zoom=11,
                                 mapbox_style="open-street-map")
-        fig.update_layout(uirevision='rms')
+        fig.update_layout(
+            title=f'Live Data Update {datetime.fromtimestamp(time_stamp).strftime('%Y-%m-%d %H:%M:%S')}',    
+            uirevision='rms'
+        )
 
         return fig
     
