@@ -48,7 +48,7 @@ def main(app):
     def update_plot(interval_state):
         global old_time
         
-        print((rms_data_list.shape))
+        # print((rms_data_list))
         if not interval_state['running']:
             rdata = get_rms_data()
             if rdata['time'] <= old_time:
