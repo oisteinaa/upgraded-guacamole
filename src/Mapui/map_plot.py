@@ -133,6 +133,8 @@ def main(app):
         lat = point_info['lat']
         lon = point_info['lon']
         # custom_data = point_info.get('customdata', 'N/A')  # If you have custom data
+        
+        print(f"Clicked Point: Latitude: {lat}, Longitude: {lon}")
 
         return f"Clicked Point: Latitude: {lat}, Longitude: {lon}"
 
