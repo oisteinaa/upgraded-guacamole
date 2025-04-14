@@ -27,29 +27,37 @@ def get_weather():
 
             # Define the location ID (lid) for this observation
             location_id = 1  # Replace with the appropriate location ID
+            
+            # Fetch all weather station locations from the database
+            cursor.execute("SELECT lid, latitude, longitude FROM public.weather_stations")
+            stations = cursor.fetchall()
 
-            # Insert each weather detail into the database
-            cursor.execute(
-                """
-                INSERT INTO public.weather_obs (lid, type, value)
-                VALUES (%s, %s, %s)
-                """,
-                (location_id, 1, details.air_temperature)
-            )
-            cursor.execute(
-                """
-                INSERT INTO public.weather_obs (lid, type, value)
-                VALUES (%s, %s, %s)
-                """,
-                (location_id, 2, details.wind_speed)
-            )
-            cursor.execute(
-                """
-                INSERT INTO public.weather_obs (lid, type, value)
-                VALUES (%s, %s, %s)
-                """,
-                (location_id, 3, details.wind_from_direction)
-            )
+            # Iterate over each station and insert weather data
+            for station in stations:
+                station_id, station_lat, station_lon = station
+                station_forecast = client.get_forecast(station_lat, station_lon).now().details
+
+                cursor.execute(
+                    """
+                    INSERT INTO public.weather_obs (lid, type, value)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (station_id, 1, station_forecast.air_temperature)
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO public.weather_obs (lid, type, value)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (station_id, 2, station_forecast.wind_speed)
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO public.weather_obs (lid, type, value)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (station_id, 3, station_forecast.wind_from_direction)
+                )
 
             connection.commit()
         except Exception as e:
