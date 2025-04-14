@@ -29,12 +29,14 @@ def get_weather():
             location_id = 1  # Replace with the appropriate location ID
             
             # Fetch all weather station locations from the database
-            cursor.execute("SELECT lid, latitude, longitude FROM public.weather_stations")
+            cursor.execute("SELECT lid, latitude, longitude, name FROM public.weather_stations")
             stations = cursor.fetchall()
 
             # Iterate over each station and insert weather data
             for station in stations:
-                station_id, station_lat, station_lon = station
+                station_id, station_lat, station_lon, name = station
+                
+                print("Recived data for station:", name)
                 station_forecast = client.get_forecast(station_lat, station_lon).now().details
 
                 cursor.execute(
