@@ -18,12 +18,13 @@ def main(app):
     
      
     # stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-    df = pd.read_excel('../../Masteliste R12 Svolvar_Kleppstad.xlsx')
+    df = pd.read_excel('../../Masteliste R06 Fygle_Solbjorn.xlsx')
+    df = df.sort_values(by='Driftsmerking')
     mast_geom = df[['Easting', 'Northing']].values
     #print(mast_geom)
     ls = LineString(mast_geom)
-    print(ls.length, ls.length / 14874)
-    geom = [ls.interpolate(distance) for distance in np.linspace(0, ls.length, 14874)]
+    print(ls.length, ls.length / 8334)
+    geom = [ls.interpolate(distance) for distance in np.linspace(0, ls.length, 8334-620)]
 
 
     app.layout = html.Div([
@@ -40,6 +41,7 @@ def main(app):
                 n_intervals=0
             ),
             html.Div(id='click-output', style={'margin-top': '20px', 'font-size': '16px'})
+
         ])
     ], style={'padding': '10px 5px'})
 
@@ -116,7 +118,6 @@ def main(app):
         fig.update_layout(uirevision='rms')
 
         return fig
-    
     
     # New callback to handle click events on the scattermapbox
     @app.callback(
