@@ -119,6 +119,22 @@ def main(app):
                                 range_color=[5500, 18000],
                                 zoom=11,
                                 mapbox_style="open-street-map")
+        
+        # Add an arrow pointing 88.9 degrees from north
+        arrow_start = gdf.geometry.iloc[0]  # Starting point of the arrow
+        arrow_length = 0.01  # Length of the arrow in degrees
+        arrow_end_lat = arrow_start.y + arrow_length * np.cos(np.radians(88.9))
+        arrow_end_lon = arrow_start.x + arrow_length * np.sin(np.radians(88.9))
+        
+        fig.add_trace(go.Scattermapbox(
+            mode="lines+markers",
+            lat=[arrow_start.y, arrow_end_lat],
+            lon=[arrow_start.x, arrow_end_lon],
+            line=dict(width=2, color="blue"),
+            marker=dict(size=10, color="blue"),
+            name="Direction Arrow"
+        ))
+
         fig.update_layout(
             title=f'Live Data Update {datetime.datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d %H:%M:%S")}',    
             uirevision='rms'
