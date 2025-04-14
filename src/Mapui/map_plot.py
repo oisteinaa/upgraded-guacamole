@@ -116,6 +116,25 @@ def main(app):
 
         return fig
     
+    
+    # New callback to handle click events on the scattermapbox
+    @app.callback(
+        Output('click-output', 'children'),
+        Input('live-update-map', 'clickData')
+    )
+    def display_click_data(click_data):
+        if click_data is None:
+            return "Click on a point in the map to see details."
+        
+        # Extract information from the clicked point
+        point_info = click_data['points'][0]
+        lat = point_info['lat']
+        lon = point_info['lon']
+        # custom_data = point_info.get('customdata', 'N/A')  # If you have custom data
+
+        return f"Clicked Point: Latitude: {lat}, Longitude: {lon}"
+
+    
     return app
 
 
