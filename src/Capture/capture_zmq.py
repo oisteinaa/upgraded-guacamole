@@ -63,7 +63,7 @@ def process_data(file):
 	headers = {'Content-Type': 'application/octet-stream'}
 
 	# Include the shape of the data in the payload
-	data = f['data'][:, ::4]
+	data = f['data'][:, ::40]
 	payload = {
         'dx': f['cableSpec']['sensorDistances'][1],
 		'shape': data.shape,
