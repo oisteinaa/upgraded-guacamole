@@ -27,14 +27,16 @@ def process_data(file):
 		return
 
 	rms = []
-	data = f['data'][:]
+	# print(f['data'].shape) 
+	data = f['data'][:, 620:-1]
+	# print(data.shape) 
 	data = data.astype(np.float32)
 	rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
 	rms_split = np.array_split(rms, 8)
 	rms_means = [np.mean(chunk) for chunk in rms_split]
  
 	var = np.mean(data, axis=0).tolist()
-	print(rms[0], var[0], f['data'].shape) 
+	print(rms[0], var[0], f['data'].shape, f['cableSpec']['sensorDistances'][1]) 
 
 	# serialized = msgpack.packb(data.tolist())
 	# compressed = gzip.compress(serialized)
@@ -46,6 +48,7 @@ def process_data(file):
 	url = 'http://127.0.0.1:5000/rms'
 	rms_json = {
 		'time': time.time(), 
+        'dx': f['cableSpec']['sensorDistances'][1],
 		'rms': rms, 'var': var, 
 		'rms_means': rms_means,
 		# 'data': data[:, 1:350].tolist()
@@ -62,6 +65,7 @@ def process_data(file):
 	# Include the shape of the data in the payload
 	data = f['data'][:, ::4]
 	payload = {
+        'dx': f['cableSpec']['sensorDistances'][1],
 		'shape': data.shape,
 		'data': data.tolist()
 	}

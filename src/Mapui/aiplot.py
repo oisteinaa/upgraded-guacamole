@@ -52,9 +52,10 @@ def main(app):
     
         data = response["rms"]
         var = response["var"]
+        dx = response["dx"]
 
         # Assuming the data is a list of dictionaries with 'x' and 'y' keys
-        x_data = [i for i, _ in enumerate(data)]
+        x_data = [i*dx for i, _ in enumerate(data)]
         y_data = [item for item in data]
         y_var = [item for item in var]
 

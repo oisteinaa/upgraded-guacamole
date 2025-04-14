@@ -91,11 +91,18 @@ def main(app):
         #     return
     
         buf = msgpack.unpackb(response.content, raw=False)
-        shape = buf['shape'] 
+        shape = buf['shape']
+        dx = buf['dx'] 
         data = np.array(buf['data']).reshape(shape)
+
+        # x_data = [f'{i*dx/1000:.2f} km' for i in range(200)]
+        # x_data = ['0 km', f'{dx*shape[0]/2} km', f'{dx*shape[0]} km']
+        
+        # print(x_data)
 
         # Create the initial heatmap figure
         heatmap_fig = go.Figure(data=go.Heatmap(z=data, colorscale='Gray', zmin=-1000, zmax=1000))
+        #heatmap_fig.update_xaxes(title_text='X Axis', tickvals=list(range(len(x_data))), ticktext=x_data)
         heatmap_fig.update_layout(height=800)  # Adjust the height as needed
 
         return heatmap_fig
