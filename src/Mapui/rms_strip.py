@@ -48,18 +48,18 @@ def main(app):
     def update_plot(interval_state):
         global old_time
         
-        # print((rms_data_list))
+        print((rms_data_list.shape))
         if not interval_state['running']:
-            data = get_rms_data()
-            if data['time'] <= old_time:
+            rdata = get_rms_data()
+            if rdata['time'] <= old_time:
                 return go.Figure(data=go.Heatmap(
                     z=np.array(rms_data_list),
                     colorscale='Viridis'
                 ))
             
-            old_time = data['time']
+            old_time = rdata['time']
             
-            rms_values = data['rms']
+            rms_values = rdata['rms']
             print(len(rms_values))
             rms_data_list.append(rms_values)
             
