@@ -39,7 +39,7 @@ def process_data(file):
 	rms_split = np.array_split(rms, 8)
 	rms_means = [np.mean(chunk) for chunk in rms_split]
  
-	var = np.mean(data, axis=0).tolist()
+	var = np.var(data, axis=0).tolist()
 	print(rms[0], var[0], f['data'].shape) 
 
 	# serialized = msgpack.packb(data.tolist())
