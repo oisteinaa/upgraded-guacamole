@@ -31,6 +31,7 @@ def get_mastliste():
     SELECT *
     FROM numbered_rows
     WHERE (rn - 1) % 4 = 0
+    ORDER BY channel DESC 
     LIMIT 8356;
     """
     df = pd.read_sql_query(query, conn)
