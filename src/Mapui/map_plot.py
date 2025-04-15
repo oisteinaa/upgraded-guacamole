@@ -6,26 +6,53 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from shapely.geometry import LineString
-from dash import dcc, html
+from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 import requests
 import datetime
 from config import cache
+import psycopg2
 
 # import sys
+
+def get_mastliste():
+    conn = psycopg2.connect(
+        dbname="sensnetdb",
+        user="sensnetdbu",
+        password="obs",
+        host="10.147.20.10",
+        port="5432"
+    )
+
+    # Execute the query and fetch data
+    query = """
+    WITH numbered_rows AS 
+        (SELECT *, row_number() OVER (ORDER BY id) AS rn FROM masteliste)
+    SELECT *
+    FROM numbered_rows
+    WHERE (rn - 1) % 4 = 0
+    LIMIT 8356;
+    """
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    return df
 
 def main(app):
     global geom
     
      
     # stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-    df = pd.read_excel('../../Masteliste R06 Fygle_Solbjorn.xlsx')
-    df = df.sort_values(by='Driftsmerking')
-    mast_geom = df[['Easting', 'Northing']].values
+    # Connect to PostgreSQL database
+   
+
+    # Close the connection
+    geom = get_mastliste()
+    # mast_geom = df[['Easting', 'Northing']].values
     #print(mast_geom)
-    ls = LineString(mast_geom)
-    print(ls.length, ls.length / 8334)
-    geom = [ls.interpolate(distance) for distance in np.linspace(0, ls.length, 8334-620)]
+    # ls = LineString(mast_geom)
+    # print(ls.length, ls.length / 8334)
+    # geom = [ls.interpolate(distance) for distance in np.linspace(0, ls.length, 8334-620)]
 
 
     app.layout = html.Div([
@@ -49,7 +76,7 @@ def main(app):
     # Cache the response from the REST server
     @cache.memoize()
     def get_rms_data():
-        url = 'http://127.0.0.1:5000/rms'
+        url = 'http://10.147.20.10:5000/rms'
         r = requests.get(url)
         return r.json()
 
@@ -92,12 +119,12 @@ def main(app):
         rms_json = response['rms']
         time_stamp = response["time"]
 
-        rmsdf = pd.DataFrame(rms_json)
-        rmsdf.columns = ['rms']
+        geom['rms'] = pd.DataFrame(rms_json)
+        geom['rms'] = geom['rms'].fillna(0)
         #print(rmsdf)
 
-        if rmsdf.shape[0] < 1:
-            gdf = gpd.GeoDataFrame(geometry=geom, crs="EPSG:32633")
+        if geom['rms'].shape[0] < 1:
+            gdf = gpd.GeoDataFrame(geom, geometry=gpd.points_from_xy(geom['longitude'], geom['latitude']), crs="EPSG:4326")
             fig = go.Figure(go.Scattermapbox(lat=gdf.geometry.y, lon=gdf.geometry.x,
                                             mode='markers',
                                             marker=go.scattermapbox.Marker(
@@ -108,32 +135,41 @@ def main(app):
 
             return fig
 
-        if len(rmsdf) != len(geom):
-            geom = [ls.interpolate(distance) for distance in np.linspace(0, ls.length, len(rmsdf))]
+        # if len(rmsdf) != len(geom):
+        #     geom = [ls.interpolate(distance) for distance in np.linspace(0, ls.length, len(rmsdf))]
             
-        gdf = gpd.GeoDataFrame(rmsdf, geometry=geom, crs="EPSG:32633")
+        # gdf = gpd.GeoDataFrame(geom, geometry=gpd.points_from_xy(geom['longitude'], geom['latitude']), crs="EPSG:32633")
+        gdf = gpd.GeoDataFrame(geom, geometry=gpd.points_from_xy(geom['longitude'], geom['latitude']), crs="EPSG:4326")
         #print(np.multiply(range(0, rmsdf.shape[1]), ls.length / rmsdf.shape[1]))
-        gdf = gdf.to_crs(crs="EPSG:4326")
+        # gdf = gdf.to_crs(crs="EPSG:4326")
 
-        fig = px.scatter_mapbox(gdf, lat=gdf.geometry.y, lon=gdf.geometry.x, color='rms', size='rms',
-                                range_color=[5500, 18000],
-                                zoom=11,
-                                mapbox_style="open-street-map")
+        fig = px.scatter_mapbox(
+            gdf, 
+            lat=gdf.geometry.y, 
+            lon=gdf.geometry.x, 
+            color='rms', 
+            size='rms',
+            range_color=[5500, 18000],
+            zoom=11,
+            mapbox_style="open-street-map",
+            hover_data={'rms': True, 'channel': True, 'distance': True}
+        )
         
         # Add an arrow pointing 88.9 degrees from north
-        arrow_start = gdf.geometry.iloc[0]  # Starting point of the arrow
-        arrow_length = 0.01  # Length of the arrow in degrees
-        arrow_end_lat = arrow_start.y + arrow_length * np.cos(np.radians(88.9))
-        arrow_end_lon = arrow_start.x + arrow_length * np.sin(np.radians(88.9))
+        # direction = 45
+        # arrow_start = gdf.geometry.iloc[0]  # Starting point of the arrow
+        # arrow_length = 0.1  # Length of the arrow in degrees
+        # arrow_end_lat = arrow_start.y + arrow_length * np.cos(np.radians(direction))
+        # arrow_end_lon = arrow_start.x + arrow_length * np.sin(np.radians(direction))
         
-        fig.add_trace(go.Scattermapbox(
-            mode="lines+markers",
-            lat=[arrow_start.y, arrow_end_lat],
-            lon=[arrow_start.x, arrow_end_lon],
-            line=dict(width=2, color="blue"),
-            marker=dict(size=10, color="blue"),
-            name="Direction Arrow"
-        ))
+        # fig.add_trace(go.Scattermapbox(
+        #     mode="lines+markers",
+        #     lat=[arrow_start.y, arrow_end_lat],
+        #     lon=[arrow_start.x, arrow_end_lon],
+        #     line=dict(width=2, color="blue"),
+        #     marker=dict(size=10, color="blue"),
+        #     name="Direction Arrow"
+        # ))
 
         fig.update_layout(
             title=f'Live Data Update {datetime.datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d %H:%M:%S")}',    
@@ -166,5 +202,6 @@ def main(app):
 
 
 if __name__ == '__main__':
-
+    app = Dash(__name__)
+    app = main(app)
     app.run(debug=True)
