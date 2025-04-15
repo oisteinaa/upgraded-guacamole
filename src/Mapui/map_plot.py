@@ -91,7 +91,7 @@ def main(app):
             html.Div([
                 dcc.Graph(id=f'gauges', style={'flex': '1 1 20%', 'min-width': '300px'}),
                 html.Div(id='click-output', style={'margin-top': '20px', 'font-size': '16px'}),
-                dcc.Graph(id='weather-graph', style={'height': '160px'}),
+                dcc.Graph(id='weather-graph', style={'height': '30vh'}),
                 dcc.Interval(
                     id='interval-component-weather',
                     interval=3600 * 1000,  # in milliseconds
