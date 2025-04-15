@@ -76,7 +76,7 @@ def main(app):
     # Cache the response from the REST server
     @cache.memoize()
     def get_rms_data():
-        url = 'http://10.147.20.10:5000/rms'
+        url = 'http://127.0.0.1:5000/rms'
         r = requests.get(url)
         return r.json()
 
