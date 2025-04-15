@@ -30,7 +30,8 @@ def get_mastliste():
         (SELECT *, row_number() OVER (ORDER BY id) AS rn FROM masteliste)
     SELECT *
     FROM numbered_rows
-    WHERE (rn - 1) % 4 = 0
+    WHERE (rn - 1) % 4 = 0 
+    AND channel < 33421
     ORDER BY channel DESC 
     LIMIT 8356;
     """
@@ -192,11 +193,12 @@ def main(app):
         point_info = click_data['points'][0]
         lat = point_info['lat']
         lon = point_info['lon']
+        ch = point_info['channel']
         # custom_data = point_info.get('customdata', 'N/A')  # If you have custom data
         
         print(f"Clicked Point: Latitude: {lat}, Longitude: {lon}")
 
-        return f"Clicked Point: Latitude: {lat}, Longitude: {lon}"
+        return f"Clicked Point: Latitude: {lat}, Longitude: {lon}, Channel: {ch}"
 
     
     return app
