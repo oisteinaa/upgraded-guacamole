@@ -144,7 +144,7 @@ def main(app):
             zoom=11,
             mapbox_style="open-street-map",
             hover_data={'rms': True, 'channel': True, 'distance': True},
-            custom_data=['channel', 'rms', 'distance']
+            custom_data={'rms': True, 'channel': True, 'distance': True},
         )
         
         # Add an arrow pointing 88.9 degrees from north
