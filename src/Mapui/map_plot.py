@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, dcc, html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 from plotly.subplots import make_subplots
 import requests
 import datetime
@@ -64,72 +64,97 @@ def main(app):
     geom = get_mastliste()
    
     app.layout = html.Div([
-        html.Div(children=[
-            dcc.Graph(id=f'gauge-{i+1}', style={'flex': '1 1 20%', 'min-width': '300px'}) for i in range(8)
+        html.Div([
+            # dcc.Graph(id=f'gauges', style={'flex': '1 1 20%', 'min-width': '300px'})
         ], 
         style={'padding': '0', 'flex': '1', 'display': 'flex', 'flex-wrap': 'wrap'}),
 
-        html.Div([   
-            dcc.Graph(id='live-update-map', style={'height': '80vh', 'margin-top': '10px'}),
-            dcc.Interval(
-                id='interval-component',
-                interval=3600 * 1000,  # in milliseconds
-                n_intervals=0
-            ),
-            html.Div(id='click-output', style={'margin-top': '20px', 'font-size': '16px'}),
+        html.Div([
             html.Div([
-                dcc.Graph(id='weather-graph', style={'height': '40vh'}),
+                dcc.Graph(id='live-update-map', style={'height': '80vh', 'margin-top': '10px'}),
                 dcc.Interval(
-                id='interval-component-weather',
-                interval=10 * 1000,  # in milliseconds
-                n_intervals=0
-            ),
-            ], style={'margin-top': '20px'})
-        ])
+                    id='interval-component',
+                    interval=10 * 1000,  # in milliseconds
+                    n_intervals=0
+                ),
+                dcc.RadioItems(
+                    id='view-selector',
+                    options=[
+                        {'label': 'Open street map', 'value': 'open-street-map'},
+                        {'label': 'Satellite map', 'value': 'satellite'}
+                    ],
+                    value='open-street-map',
+                    style={'margin-top': '20px'}
+                ),
+                dcc.Store("map_type", storage_type="local", data="open-street-map"),
+            ], style={'flex': '1', 'flex-direction': 'row','margin-right': '10px'}),
+            html.Div([
+                dcc.Graph(id=f'gauges', style={'flex': '1 1 20%', 'min-width': '300px'}),
+                html.Div(id='click-output', style={'margin-top': '20px', 'font-size': '16px'}),
+                dcc.Graph(id='weather-graph', style={'height': '160px'}),
+                dcc.Interval(
+                    id='interval-component-weather',
+                    interval=3600 * 1000,  # in milliseconds
+                    n_intervals=0
+                ),
+            ], style={'flex': '1', 'margin-left': '10px'}),
+        ], style={'display': 'flex', 'margin-top': '20px'})
     ], style={'padding': '10px 5px'})
 
     # Cache the response from the REST server
     @cache.memoize()
     def get_rms_data():
         url = 'http://127.0.0.1:5000/rms'
-        # url = 'http://10.147.20.10:5000/rms'
+        url = 'http://10.147.20.10:5000/rms'
         r = requests.get(url)
         return r.json()
 
     @app.callback(
-        [Output(f'gauge-{i+1}', 'figure') for i in range(8)],
+        Output(f'gauges', 'figure'),
         Input('interval-component', 'n_intervals')
     )
     def update_gauges(n):
         response = get_rms_data()
         rms_split = response['rms_means']
         
-        gauges = []
-        for i in range(8):
-            fig = go.Figure(go.Indicator(
-                mode="gauge+number+delta",
-                delta = {'relative': True},
-                value=rms_split[i],
-                gauge={
-                    'axis': {'range': [None, 4000]},
-                    'bar': {'color': "black", "thickness": 0.2},
-                    'steps': [
-                        {'range': [0, 2500], 'color': "green"},
-                        {'range': [2500, 3500], 'color': "yellow"},
-                        {'range': [3500, 4000], 'color': "red"}
-                    ]
-                }
-            ))
-            fig.update_layout(height=250)
-            gauges.append(fig)
+        fig = make_subplots(
+            rows=2, cols=4,
+            subplot_titles=[f"Gauge {i+1}" for i in range(8)],
+            specs=[[{"type": "indicator"}] * 4] * 2
+        )
         
-        return gauges
+        for i in range(8):
+            row = (i // 4) + 1
+            col = (i % 4) + 1
+            fig.add_trace(
+                go.Indicator(
+                    mode="gauge+number+delta",
+                    delta={'relative': True},
+                    value=rms_split[i] if i < len(rms_split) else 0,
+                    gauge={
+                        'axis': {'range': [None, 4000]},
+                        'bar': {'color': "black", "thickness": 0.2},
+                        'steps': [
+                            {'range': [0, 2500], 'color': "green"},
+                            {'range': [2500, 3500], 'color': "yellow"},
+                            {'range': [3500, 4000], 'color': "red"}
+                        ]
+                    }
+                ),
+                row=row, col=col
+            )
+        
+        fig.update_layout(height=600, title="RMS Gauges")
+        return fig
 
     # Multiple components can update everytime interval gets fired.
     @app.callback(Output('live-update-map', 'figure'),
-            Input('interval-component', 'n_intervals'))
-    def update_graph_live(_):
+            Input('interval-component', 'n_intervals'),
+            State('map_type', 'data'))
+    def update_graph_live(_, map_type):
         global geom
+        
+        print(map_type)
         
         response = get_rms_data()
         rms_json = response['rms']
@@ -170,7 +195,7 @@ def main(app):
             range_color=[5500, 18000],
             zoom=11,
             # mapbox_style="open-street-map",
-            map_style="satellite",
+            map_style=map_type,
             hover_data={'rms': True, 'channel': True, 'distance': True},
             custom_data=['channel', 'rms', 'distance'],
         )
@@ -241,6 +266,14 @@ def main(app):
         )
 
         return fig
+    
+    @app.callback(
+        Output('map_type', 'data'),
+        Input('view-selector', 'value')
+    )
+    def store_radio_value(selected_value):
+        print(selected_value)
+        return selected_value
     
     # New callback to handle click events on the scattermapbox
     @app.callback(
