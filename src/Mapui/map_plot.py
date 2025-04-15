@@ -122,7 +122,7 @@ def main(app):
         time_stamp = response["time"]
 
         geom['rms'] = pd.DataFrame(rms_json)
-        geom['rms'] = geom['rms'].fillna(0)
+        geom['rms'] = geom['rms'].fillna(20)
         #print(rmsdf)
 
         if geom['rms'].shape[0] < 1:
