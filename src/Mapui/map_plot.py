@@ -143,7 +143,7 @@ def main(app):
             range_color=[5500, 18000],
             zoom=11,
             mapbox_style="open-street-map",
-            hover_data={'rms': True, 'channel': True, 'distance': True}
+            hover_data={'rms': True, 'channel': True, 'distance': True},
             custom_data=['channel', 'rms', 'distance']
         )
         
