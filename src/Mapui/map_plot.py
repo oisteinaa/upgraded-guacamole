@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
+from plotly.subplots import make_subplots
 import requests
 import datetime
 from config import cache
@@ -14,7 +15,7 @@ import psycopg2
 
 # import sys
 
-def get_mastliste():
+def get_db_conn():
     conn = psycopg2.connect(
         dbname="sensnetdb",
         user="sensnetdbu",
@@ -22,7 +23,10 @@ def get_mastliste():
         host="10.147.20.10",
         port="5432"
     )
+    
+    return conn
 
+def get_mastliste():
     # Execute the query and fetch data
     query = """
     WITH numbered_rows AS 
@@ -34,6 +38,20 @@ def get_mastliste():
     ORDER BY channel DESC 
     LIMIT 8356;
     """
+    conn = get_db_conn()
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    return df
+
+def get_weather():
+    query = """
+    SELECT * FROM weather_obs
+    WHERE age(now(), time) < interval '24 hour'
+    ORDER BY time
+    """
+    
+    conn = get_db_conn()
     df = pd.read_sql_query(query, conn)
     conn.close()
     
@@ -55,11 +73,18 @@ def main(app):
             dcc.Graph(id='live-update-map', style={'height': '80vh', 'margin-top': '10px'}),
             dcc.Interval(
                 id='interval-component',
+                interval=3600 * 1000,  # in milliseconds
+                n_intervals=0
+            ),
+            html.Div(id='click-output', style={'margin-top': '20px', 'font-size': '16px'}),
+            html.Div([
+                dcc.Graph(id='weather-graph', style={'height': '40vh'}),
+                dcc.Interval(
+                id='interval-component-weather',
                 interval=10 * 1000,  # in milliseconds
                 n_intervals=0
             ),
-            html.Div(id='click-output', style={'margin-top': '20px', 'font-size': '16px'})
-
+            ], style={'margin-top': '20px'})
         ])
     ], style={'padding': '10px 5px'})
 
@@ -169,6 +194,50 @@ def main(app):
         fig.update_layout(
             title=f'Live Data Update {datetime.datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d %H:%M:%S")}',    
             uirevision='rms'
+        )
+
+        return fig
+    
+    @app.callback(
+        Output('weather-graph', 'figure'),
+        Input('interval-component-weather', 'n_intervals')
+    )
+    def update_weather_graph(n):
+        response = get_weather()
+        # print(response)
+        if response.empty:
+            return go.Figure()  # Return an empty figure if no data
+
+        # Group the weather data by 'type' and 'lid'
+        grouped = response.groupby(['type', 'lid'])
+
+        # Create a scatter plot with one curve per 'type' and 'lid'
+        fig = make_subplots(
+            rows=1, cols=3, 
+            # shared_xaxes=True, 
+            subplot_titles=("Temperature", "Wind speed", "Wind direction"),
+            vertical_spacing=0.1
+        )
+
+        for (type_, lid), group in grouped:
+            row = type_  # Assuming 'type_' corresponds to rows 1, 2, 3
+            fig.add_trace(
+            go.Scatter(
+                x=group['time'],
+                y=group['value'],
+                mode='lines+markers',
+                name=f'{type_} - {lid}'
+            ),
+            row=1, col=row
+            )
+
+        fig.update_layout(
+            title='Weather Data Over Time',
+            xaxis_title='Time',
+            yaxis_title='Value',
+            height=900,  # Adjust height for three subplots
+            uirevision='weather',
+            showlegend=False  # Disable legend to avoid clutter
         )
 
         return fig
