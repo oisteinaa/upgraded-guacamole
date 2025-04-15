@@ -42,21 +42,10 @@ def get_mastliste():
 
 def main(app):
     global geom
-    
-     
+
     # stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-    # Connect to PostgreSQL database
-   
-
-    # Close the connection
     geom = get_mastliste()
-    # mast_geom = df[['Easting', 'Northing']].values
-    #print(mast_geom)
-    # ls = LineString(mast_geom)
-    # print(ls.length, ls.length / 8334)
-    # geom = [ls.interpolate(distance) for distance in np.linspace(0, ls.length, 8334-620)]
-
-
+   
     app.layout = html.Div([
         html.Div(children=[
             dcc.Graph(id=f'gauge-{i+1}', style={'flex': '1 1 20%', 'min-width': '300px'}) for i in range(8)
@@ -193,7 +182,7 @@ def main(app):
         point_info = click_data['points'][0]
         lat = point_info['lat']
         lon = point_info['lon']
-        ch = point_info['channel']
+        ch = point_info.get('channel', 'N/A')
         # custom_data = point_info.get('customdata', 'N/A')  # If you have custom data
         
         print(f"Clicked Point: Latitude: {lat}, Longitude: {lon}")
