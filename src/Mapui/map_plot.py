@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from shapely.geometry import LineString
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 import requests
@@ -53,7 +52,7 @@ def main(app):
         style={'padding': '0', 'flex': '1', 'display': 'flex', 'flex-wrap': 'wrap'}),
 
         html.Div([   
-            dcc.Graph(id='live-update-map', style={'height': '60vh', 'margin-top': '10px'}),
+            dcc.Graph(id='live-update-map', style={'height': '80vh', 'margin-top': '10px'}),
             dcc.Interval(
                 id='interval-component',
                 interval=10 * 1000,  # in milliseconds
@@ -68,6 +67,7 @@ def main(app):
     @cache.memoize()
     def get_rms_data():
         url = 'http://127.0.0.1:5000/rms'
+        # url = 'http://10.147.20.10:5000/rms'
         r = requests.get(url)
         return r.json()
 
@@ -116,7 +116,7 @@ def main(app):
 
         if geom['rms'].shape[0] < 1:
             gdf = gpd.GeoDataFrame(geom, geometry=gpd.points_from_xy(geom['longitude'], geom['latitude']), crs="EPSG:4326")
-            fig = go.Figure(go.Scattermapbox(lat=gdf.geometry.y, lon=gdf.geometry.x,
+            fig = go.Figure(go.Scattermap(lat=gdf.geometry.y, lon=gdf.geometry.x,
                                             mode='markers',
                                             marker=go.scattermapbox.Marker(
                                                 size=14
@@ -133,8 +133,10 @@ def main(app):
         gdf = gpd.GeoDataFrame(geom, geometry=gpd.points_from_xy(geom['longitude'], geom['latitude']), crs="EPSG:4326")
         #print(np.multiply(range(0, rmsdf.shape[1]), ls.length / rmsdf.shape[1]))
         # gdf = gdf.to_crs(crs="EPSG:4326")
+        
+        # print(gdf['channel'])
 
-        fig = px.scatter_mapbox(
+        fig = px.scatter_map(
             gdf, 
             lat=gdf.geometry.y, 
             lon=gdf.geometry.x, 
@@ -142,9 +144,10 @@ def main(app):
             size='rms',
             range_color=[5500, 18000],
             zoom=11,
-            mapbox_style="open-street-map",
+            # mapbox_style="open-street-map",
+            map_style="satellite",
             hover_data={'rms': True, 'channel': True, 'distance': True},
-            custom_data=['channel', 'rms', 'distance']
+            custom_data=['channel', 'rms', 'distance'],
         )
         
         # Add an arrow pointing 88.9 degrees from north
@@ -183,10 +186,10 @@ def main(app):
         point_info = click_data['points'][0]
         lat = point_info['lat']
         lon = point_info['lon']
-        ch = point_info.get('channel', 'N/A')
+        ch = point_info['customdata'][0]
         # custom_data = point_info.get('customdata', 'N/A')  # If you have custom data
         
-        print(f"Clicked Point: Latitude: {lat}, Longitude: {lon}")
+        print(point_info)
 
         return f"Clicked Point: Latitude: {lat}, Longitude: {lon}, Channel: {ch}"
 
