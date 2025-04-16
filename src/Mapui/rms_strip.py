@@ -9,7 +9,7 @@ import plotly.graph_objs as go
 from config import cache
 
 # Initialize rms_data_list with 50 arrays of zeroes
-rms_data_list = [np.zeros(7735) for _ in range(50)]
+rms_data_list = [np.zeros(10) for _ in range(50)]
 old_time = 0
 
 
@@ -28,7 +28,7 @@ def main(app):
     # Cache the response from the REST server
     @cache.memoize()
     def get_rms_data():
-        url = 'http://localhost:5000/rms'
+        url = 'http://10.147.20.10:5000/rms'
         r = requests.get(url)
         return r.json()
     
