@@ -38,8 +38,6 @@ def process_data(file):
 	var = np.var(data, axis=0).tolist()
 	print(rms[0], var[0], f['data'].shape, f['cableSpec']['sensorDistances'][1]) 
 
-	# serialized = msgpack.packb(data.tolist())
-	# compressed = gzip.compress(serialized)
 
 	# sys.exit(0)
 	start += 100
@@ -64,10 +62,12 @@ def process_data(file):
 
 	# Include the shape of the data in the payload
 	data = f['data'][:, ::1]
+	serialized = msgpack.packb(data.tolist())
+	compressed = gzip.compress(serialized)
 	payload = {
         'dx': f['cableSpec']['sensorDistances'][1],
 		'shape': data.shape,
-		'data': data.tolist()
+		'data': compressed
 	}
 	
 	# Serialize the payload using msgpack
