@@ -91,6 +91,7 @@ def main(app):
         #     return
     
         buf = msgpack.unpackb(response.content, raw=False)
+        # buf = response.content
         shape = buf['shape']
         dx = buf['dx'] 
         data = np.array(buf['data']).reshape(shape)
@@ -121,7 +122,7 @@ def main(app):
         column_data = data[:, selected_column]
 
         # Compute the periodogram
-        freqs, power = periodogram(column_data)
+        freqs, power = periodogram(column_data, fs=500)
 
         # Create the periodogram figure
         periodogram_fig = go.Figure(data=go.Scattergl(x=freqs, y=power, mode='lines'))
