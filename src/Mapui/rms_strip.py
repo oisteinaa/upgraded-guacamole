@@ -54,7 +54,7 @@ def main(app):
             rdata = get_rms_data()
             if rdata['time'] <= old_time:
                 return go.Figure(data=go.Heatmap(
-                    z=np.array(rms_data_list),
+                    z=np.array(rms_data_list, dtype=object),
                     colorscale='Viridis'
                 ))
             
@@ -69,7 +69,7 @@ def main(app):
                 rms_data_list.pop(0)
             
             fig = go.Figure(data=go.Heatmap(
-                z=np.array(rms_data_list),
+                z=np.array(rms_data_list, dtype=object),
                 colorscale='Viridis'
             ))
             
