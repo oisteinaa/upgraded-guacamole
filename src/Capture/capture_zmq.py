@@ -9,6 +9,7 @@ import requests
 import json
 import msgpack
 import gzip
+import zlib
 
 
 def process_data(file):
@@ -63,7 +64,7 @@ def process_data(file):
 	# Include the shape of the data in the payload
 	data = f['data'][:, ::1]
 	serialized = msgpack.packb(data.tolist())
-	compressed = gzip.compress(serialized)
+	compressed = zlib.compress(serialized, level=9)
 	payload = {
         'dx': f['cableSpec']['sensorDistances'][1],
 		'shape': data.shape,
