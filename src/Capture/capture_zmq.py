@@ -76,13 +76,13 @@ def process_data(file):
 	headers = {'Content-Type': 'application/octet-stream'}
 
 	# Include the shape of the data in the payload
-	data = f['data'][:, ::1]
+	data = f['data'][:, ::10]
 	# serialized = msgpack.packb(data.tolist())
-	compressed = compress_data(data, compression_level=22)
+	# compressed = compress_data(data, compression_level=22)
 	payload = {
         'dx': f['cableSpec']['sensorDistances'][1],
 		'shape': data.shape,
-		'data': compressed
+		'data': data.tolist()
 	}
 	
 	# Serialize the payload using msgpack
