@@ -77,16 +77,35 @@ def main(app):
                     interval=10 * 1000,  # in milliseconds
                     n_intervals=0
                 ),
-                dcc.RadioItems(
-                    id='view-selector',
-                    options=[
-                        {'label': 'Open street map', 'value': 'open-street-map'},
-                        {'label': 'Satellite map', 'value': 'satellite'}
-                    ],
-                    value='open-street-map',
-                    style={'margin-top': '20px'}
-                ),
-                dcc.Store("map_type", storage_type="local", data="open-street-map"),
+                
+                html.Div([
+                    html.Div([
+                        dcc.RadioItems(
+                            id='view-selector',
+                            options=[
+                                {'label': 'Open street map', 'value': 'open-street-map'},
+                                {'label': 'Satellite map', 'value': 'satellite'}
+                            ],
+                            value='open-street-map',
+                            style={'margin-top': '20px'}
+                        ),
+                        dcc.Store("map_type", storage_type="local", data="open-street-map"),
+                    ], style={'flex': '1', 'margin-right': '10px'}),
+
+                    html.Div([
+                        dcc.RadioItems(
+                            id='data-selector',
+                            options=[
+                                {'label': 'RMS', 'value': 'rms'},
+                                {'label': 'Variance', 'value': 'var'}
+                            ],
+                            value='rms',
+                            style={'margin-top': '20px'}
+                        ),
+                        dcc.Store("data_type", storage_type="memory", data="rms"),
+                    ], style={'flex': '1'}),
+                ], style={'display': 'flex', 'flex-direction': 'row', 'margin-top': '20px'}),
+                
             ], style={'flex': '1', 'flex-direction': 'row','margin-right': '10px'}),
             html.Div([
                 dcc.Graph(id=f'gauges', style={'flex': '1 1 20%', 'min-width': '300px'}),
@@ -94,7 +113,7 @@ def main(app):
                 dcc.Graph(id='weather-graph', style={'height': '30vh'}),
                 dcc.Interval(
                     id='interval-component-weather',
-                    interval=3600 * 1000,  # in milliseconds
+                    interval=1700 * 1000,  # in milliseconds
                     n_intervals=0
                 ),
             ], style={'flex': '1', 'margin-left': '10px'}),
@@ -105,7 +124,7 @@ def main(app):
     @cache.memoize()
     def get_rms_data():
         url = 'http://127.0.0.1:5000/rms'
-        # url = 'http://10.147.20.10:5000/rms'
+        url = 'http://10.147.20.10:5000/rms'
         r = requests.get(url)
         return r.json()
 
@@ -150,14 +169,13 @@ def main(app):
     # Multiple components can update everytime interval gets fired.
     @app.callback(Output('live-update-map', 'figure'),
             Input('interval-component', 'n_intervals'),
-            State('map_type', 'data'))
-    def update_graph_live(_, map_type):
+            State('map_type', 'data'),
+            State('data-selector', 'value'))
+    def update_graph_live(_, map_type, data_type):
         global geom
         
-        print(map_type)
-        
         response = get_rms_data()
-        rms_json = response['rms']
+        rms_json = response[data_type]
         time_stamp = response["time"]
 
         geom['rms'] = pd.DataFrame(rms_json)
@@ -173,18 +191,9 @@ def main(app):
                                             ),
                                             ))
             fig.update_layout(uirevision='rms', mapbox_style="open-street-map")
-
             return fig
 
-        # if len(rmsdf) != len(geom):
-        #     geom = [ls.interpolate(distance) for distance in np.linspace(0, ls.length, len(rmsdf))]
-            
-        # gdf = gpd.GeoDataFrame(geom, geometry=gpd.points_from_xy(geom['longitude'], geom['latitude']), crs="EPSG:32633")
         gdf = gpd.GeoDataFrame(geom, geometry=gpd.points_from_xy(geom['longitude'], geom['latitude']), crs="EPSG:4326")
-        #print(np.multiply(range(0, rmsdf.shape[1]), ls.length / rmsdf.shape[1]))
-        # gdf = gdf.to_crs(crs="EPSG:4326")
-        
-        # print(gdf['channel'])
 
         fig = px.scatter_map(
             gdf, 
@@ -221,6 +230,7 @@ def main(app):
             uirevision='rms'
         )
 
+        print(f'{map_type} {data_type}', time_stamp)
         return fig
     
     @app.callback(
@@ -267,11 +277,20 @@ def main(app):
 
         return fig
     
+    # Callbacks to store the selected values in dcc.Store
     @app.callback(
         Output('map_type', 'data'),
         Input('view-selector', 'value')
     )
-    def store_radio_value(selected_value):
+    def store_map_type_value(selected_value):
+        print(selected_value)
+        return selected_value
+    
+    @app.callback(
+        Output('data_type', 'data'),
+        Input('data-selector', 'value')
+    )
+    def store_data_type_value(selected_value):
         print(selected_value)
         return selected_value
     
@@ -293,9 +312,7 @@ def main(app):
         
         print(point_info)
 
-        return f"Clicked Point: Latitude: {lat}, Longitude: {lon}, Channel: {ch}"
-
-    
+        return f"Clicked Point: Latitude: {lat}, Longitude: {lon}, Channel: {ch}"    
     return app
 
 

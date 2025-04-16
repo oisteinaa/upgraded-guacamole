@@ -28,7 +28,7 @@ def process_data(file):
 
 	rms = []
 	# print(f['data'].shape) 
-	data = f['data'][:, 620:-1]
+	data = f['data']
 	# print(data.shape) 
 	data = data.astype(np.float32)
 	rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
@@ -63,7 +63,7 @@ def process_data(file):
 	headers = {'Content-Type': 'application/octet-stream'}
 
 	# Include the shape of the data in the payload
-	data = f['data'][:, ::40]
+	data = f['data'][:, ::1]
 	payload = {
         'dx': f['cableSpec']['sensorDistances'][1],
 		'shape': data.shape,

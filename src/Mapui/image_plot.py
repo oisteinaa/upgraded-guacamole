@@ -77,7 +77,7 @@ def main(app):
     def update_graph_live(n):
         global LAST_TIME, data
         # Replace with your REST API endpoint
-        url = 'http://localhost:5000/rawdata'
+        url = 'http://10.147.20.10:5000/rawdata'
         response = get_data(url)
 
         # if "time" not in response.json():
@@ -124,7 +124,7 @@ def main(app):
         freqs, power = periodogram(column_data)
 
         # Create the periodogram figure
-        periodogram_fig = go.Figure(data=go.Scatter(x=freqs, y=power, mode='lines'))
+        periodogram_fig = go.Figure(data=go.Scattergl(x=freqs, y=power, mode='lines'))
         periodogram_fig.update_layout(title=f'Periodogram of Channel {selected_column}',
                                     xaxis_title='Frequency',
                                     yaxis_title='Power')
