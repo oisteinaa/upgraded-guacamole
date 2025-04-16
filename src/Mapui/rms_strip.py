@@ -19,7 +19,7 @@ def main(app):
         dcc.Graph(id='rms-graph'),
         dcc.Interval(
             id='interval-component',
-            interval=5*1000,  # in milliseconds
+            interval=10*1000,  # in milliseconds
             n_intervals=0
         ),
         dcc.Store(id='interval-state', data={'running': True})
