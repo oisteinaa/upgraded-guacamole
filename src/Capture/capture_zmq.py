@@ -10,6 +10,20 @@ import json
 import msgpack
 import gzip
 import zlib
+import zstandard as zstd
+
+def compress_data(data, compression_level=22):
+    """
+    Compress binary data using Zstandard with lossy compression.
+    """
+    # Convert data to a lossy format (e.g., reduce precision)
+    lossy_data = np.round(data, decimals=2)  # Reduce precision to 2 decimal places
+    serialized = msgpack.packb(lossy_data.tolist())  # Serialize the data
+
+    # Compress using Zstandard
+    compressor = zstd.ZstdCompressor(level=compression_level)
+    compressed = compressor.compress(serialized)
+    return compressed
 
 
 def process_data(file):
@@ -63,8 +77,8 @@ def process_data(file):
 
 	# Include the shape of the data in the payload
 	data = f['data'][:, ::1]
-	serialized = msgpack.packb(data.tolist())
-	compressed = zlib.compress(serialized, level=9)
+	# serialized = msgpack.packb(data.tolist())
+	compressed = compress_data(data, compression_level=22)
 	payload = {
         'dx': f['cableSpec']['sensorDistances'][1],
 		'shape': data.shape,
