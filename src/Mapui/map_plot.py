@@ -104,7 +104,11 @@ def main(app):
             specs=[[{"type": "indicator"}] * 4] * 2
         )
         
-        for i, (name, limit) in enumerate(event_limits.items()):
+        for i, row in enumerate(event_limits.iterrows()):
+            name = row['name']  # Replace 'name' with the actual column name for event names
+            limit = float(row['limit'])  # Replace 'limit' with the actual column name for limits
+            # Ensure limit is converted to a numeric type
+            limit = float(limit)
             row = (i // 4) + 1
             col = (i % 4) + 1
             fig.add_trace(
