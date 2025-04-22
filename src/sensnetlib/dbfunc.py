@@ -60,7 +60,7 @@ def get_event_limits():
 def insert_event(typeid, value, comment):
     query = """
     INSERT INTO events (type, value, comment)
-    VALUES (%s, %s, %s);
+    VALUES (%i, %f, %s);
     """
     
     conn = get_db_conn()
