@@ -170,7 +170,7 @@ def main(app):
             zoom=11,
             # mapbox_style="open-street-map",
             map_style=map_type,
-            hover_data={'rms': True, 'channel': True, 'distance': True},
+            hover_data={'rms': True, 'channel': True, 'distance': True, 'gid': True},
             custom_data=['channel', 'rms', 'distance'],
         )
         
