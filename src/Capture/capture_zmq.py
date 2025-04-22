@@ -74,8 +74,9 @@ def process_data(file, mastdf):
         var = var_future.result()
         rms_means = rms_means_future.result()
         
-    # Run detect_events in the background
-    executor.submit(detect_events, rms_means)
+    # Run detect_events in a separate thread
+    thread = ThreadPoolExecutor(max_workers=1)
+    thread.submit(detect_events, rms_means)
  
 
     url = 'http://127.0.0.1:5000/rms'
