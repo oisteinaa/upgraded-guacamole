@@ -104,12 +104,11 @@ def main(app):
             specs=[[{"type": "indicator"}] * 4] * 2
         )
         
-        for i, (index, row) in enumerate(event_limits.iterrows()):
+        for i, (index, evrow) in enumerate(event_limits.iterrows()):
             # Ensure limit is converted to a numeric type
-            print(row)
-            limit = float(row['limit'])
+            limit = float(evrow['limit'])
             
-            if row['absolute']:
+            if evrow['absolute']:
                 limit = abs(limit)
                 
             row = (i // 4) + 1
@@ -119,7 +118,7 @@ def main(app):
                 mode="gauge+number+delta",
                 delta={'relative': True},
                 value=rms_split[i] if i < len(rms_split) else 0,
-                title={'text': row['name']},
+                title={'text': evrow['name']},
                 gauge={
                 'axis': {'range': [None, 4000]},
                 'bar': {'color': "black", "thickness": 0.2},
