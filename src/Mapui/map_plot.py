@@ -11,51 +11,11 @@ from plotly.subplots import make_subplots
 import requests
 import datetime
 from config import cache
-import psycopg2
+import sys
+import os
 
-# import sys
-
-def get_db_conn():
-    conn = psycopg2.connect(
-        dbname="sensnetdb",
-        user="sensnetdbu",
-        password="obs",
-        host="10.147.20.10",
-        port="5432"
-    )
-    
-    return conn
-
-def get_mastliste():
-    # Execute the query and fetch data
-    query = """
-    WITH numbered_rows AS 
-        (SELECT *, row_number() OVER (ORDER BY id) AS rn FROM masteliste)
-    SELECT *
-    FROM numbered_rows
-    WHERE (rn - 1) % 4 = 0 
-    AND channel < 33421
-    ORDER BY channel DESC 
-    LIMIT 8356;
-    """
-    conn = get_db_conn()
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    
-    return df
-
-def get_weather():
-    query = """
-    SELECT * FROM weather_obs
-    WHERE age(now(), time) < interval '24 hour'
-    ORDER BY time
-    """
-    
-    conn = get_db_conn()
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    
-    return df
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+from sensnetlib.dbfunc import get_mastliste, get_weather, get_event_limits
 
 def main(app):
     global geom
@@ -134,33 +94,36 @@ def main(app):
     )
     def update_gauges(n):
         response = get_rms_data()
+        event_limits = get_event_limits()
+        
         rms_split = response['rms_means']
         
         fig = make_subplots(
             rows=2, cols=4,
-            subplot_titles=[f"Gauge {i+1}" for i in range(8)],
+            subplot_titles=[f"{name}" for name in event_limits.keys()],
             specs=[[{"type": "indicator"}] * 4] * 2
         )
         
-        for i in range(8):
+        for i, (name, limit) in enumerate(event_limits.items()):
             row = (i // 4) + 1
             col = (i % 4) + 1
             fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number+delta",
-                    delta={'relative': True},
-                    value=rms_split[i] if i < len(rms_split) else 0,
-                    gauge={
-                        'axis': {'range': [None, 4000]},
-                        'bar': {'color': "black", "thickness": 0.2},
-                        'steps': [
-                            {'range': [0, 2500], 'color': "green"},
-                            {'range': [2500, 3500], 'color': "yellow"},
-                            {'range': [3500, 4000], 'color': "red"}
-                        ]
-                    }
-                ),
-                row=row, col=col
+            go.Indicator(
+                mode="gauge+number+delta",
+                delta={'relative': True},
+                value=rms_split[i] if i < len(rms_split) else 0,
+                title={'text': name},
+                gauge={
+                'axis': {'range': [None, 4000]},
+                'bar': {'color': "black", "thickness": 0.2},
+                'steps': [
+                    {'range': [0, limit * 0.7], 'color': "green"},
+                    {'range': [limit * 0.7, limit], 'color': "yellow"},
+                    {'range': [limit, 1.7*limit], 'color': "red"}
+                ]
+                }
+            ),
+            row=row, col=col
             )
         
         fig.update_layout(height=600, title="RMS Gauges")
