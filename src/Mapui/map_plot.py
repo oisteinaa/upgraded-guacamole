@@ -119,7 +119,7 @@ def main(app):
                 mode="gauge+number+delta",
                 delta={'relative': True},
                 value=rms_split[i] if i < len(rms_split) else 0,
-                title={'text': name},
+                title={'text': row['name']},
                 gauge={
                 'axis': {'range': [None, 4000]},
                 'bar': {'color': "black", "thickness": 0.2},
