@@ -57,6 +57,18 @@ def get_event_limits():
     
     return df
 
+def get_event_data():
+    query = """
+    SELECT time, type, value, comment
+    FROM events ORDER BY time DESC limit 20;
+    """
+    
+    conn = get_db_conn()
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    return df
+
 def insert_event(typeid, value, comment):
     query = """
     INSERT INTO events (type, value, comment)

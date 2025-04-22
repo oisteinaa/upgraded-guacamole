@@ -7,6 +7,7 @@ import aiplot
 import image_plot
 import map_plot
 import rms_strip
+import event_log
 from config import app
 
 
@@ -29,6 +30,9 @@ print("Initializing map app")
 map_app = dash.Dash("map_app", server=app, url_base_pathname='/maps/')
 map_plot.main(map_app)
 
+print("Initializing event log app")
+event_log_app = dash.Dash("event_log_app", server=app, url_base_pathname='/event_log/')
+map_plot.main(event_log_app)
 print("Dash apps initialized")
 
 @app.route('/')
@@ -50,6 +54,10 @@ def data():
 @app.route('/maps')
 def maps():
     return map_app.index()
+
+@app.route('/event_log')
+def maps():
+    return event_log_app.index()
 
 if __name__ == '__main__':
     print("Running app")
