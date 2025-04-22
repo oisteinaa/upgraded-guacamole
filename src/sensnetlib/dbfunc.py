@@ -56,3 +56,16 @@ def get_event_limits():
     conn.close()
     
     return df
+
+def insert_event(typeid, value, comment):
+    query = """
+    INSERT INTO events (type, value, comment)
+    VALUES (%s, %s, %s);
+    """
+    
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    cursor.execute(query, (typeid, value, comment))
+    conn.commit()
+    cursor.close()
+    conn.close()

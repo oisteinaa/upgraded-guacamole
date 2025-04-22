@@ -8,14 +8,14 @@ import numpy as np
 import requests
 import json
 import msgpack
-import gzip
-import zlib
 import zstandard as zstd
 import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from sensnetlib.dbfunc import get_mastliste
+from concurrent.futures import ThreadPoolExecutor
+from event_detector import detect_events
 
 def compress_data(data, compression_level=22):
     """
@@ -30,9 +30,24 @@ def compress_data(data, compression_level=22):
     compressed = compressor.compress(serialized)
     return compressed
 
+def get_rms(data):
+    return np.sqrt(np.mean(np.square(data), axis=0)).tolist()
+    
+def get_variance(data):
+    return np.var(data, axis=0).tolist()
+
+def get_rms_chunks(rms, mastdf):
+    rms_means = []
+    for gid in mastdf['gid'].unique():
+        indices = mastdf[mastdf['gid'] == gid].index
+        rms_chunk = [rms[i] for i in indices if i < len(rms)]
+        if rms_chunk:
+            rms_means.append(np.mean(rms_chunk))
+            
+    return rms_means
+
 
 def process_data(file, mastdf):
-    start = 0
     tries = 50
     while tries:
         try:
@@ -47,27 +62,21 @@ def process_data(file, mastdf):
         return
 
     rms = []
-    # print(f['data'].shape) 
     data = f['data']
-    # print(data.shape) 
     data = data.astype(np.float32)
-    rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
- 
-    # Calculate the RMS for each chunk grouped by gid in mastdf
-    rms_means = []
-    for gid in mastdf['gid'].unique():
-        indices = mastdf[mastdf['gid'] == gid].index
-        rms_chunk = [rms[i] for i in indices if i < len(rms)]
-        if rms_chunk:
-            rms_means.append(np.mean(rms_chunk))
- 
-    var = np.var(data, axis=0).tolist()
-    print(rms[0], var[0], f['data'].shape, f['cableSpec']['sensorDistances'][1]) 
+    
+    with ThreadPoolExecutor() as executor:
+        rms_future = executor.submit(get_rms, data)
+        var_future = executor.submit(get_variance, data)
+        rms_means_future = executor.submit(get_rms_chunks, rms_future.result(), mastdf)
 
-
-    # sys.exit(0)
-    start += 100
-    # rmsdf = pd.DataFrame(np.array(rms), columns=['rms'])
+        rms = rms_future.result()
+        var = var_future.result()
+        rms_means = rms_means_future.result()
+        
+    # Run detect_events in the background
+    executor.submit(detect_events, rms_means)
+ 
 
     url = 'http://127.0.0.1:5000/rms'
     rms_json = {
