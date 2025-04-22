@@ -32,7 +32,7 @@ map_plot.main(map_app)
 
 print("Initializing event log app")
 event_log_app = dash.Dash("event_log_app", server=app, url_base_pathname='/event_log/')
-map_plot.main(event_log_app)
+event_log.main(event_log_app)
 print("Dash apps initialized")
 
 @app.route('/')
@@ -56,7 +56,7 @@ def maps():
     return map_app.index()
 
 @app.route('/event_log')
-def maps():
+def event_log():
     return event_log_app.index()
 
 if __name__ == '__main__':
