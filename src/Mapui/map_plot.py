@@ -107,9 +107,6 @@ def main(app):
         for i, (index, evrow) in enumerate(event_limits.iterrows()):
             # Ensure limit is converted to a numeric type
             limit = float(evrow['limit'])
-            
-            if evrow['absolute']:
-                limit = abs(limit)
                 
             row = (i // 4) + 1
             col = (i % 4) + 1
@@ -120,7 +117,7 @@ def main(app):
                 value=rms_split[i] if i < len(rms_split) else 0,
                 title={'text': evrow['name']},
                 gauge={
-                'axis': {'range': [None, 4000]},
+                'axis': {'range': [0, 1.7*limit]},
                 'bar': {'color': "black", "thickness": 0.2},
                 'steps': [
                     {'range': [0, limit * 0.7], 'color': "green"},
