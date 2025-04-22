@@ -24,7 +24,7 @@ def detect_events(data):
             value = data[i]
         
         if value > evrow['limit']:
-            event_detected(evrow, data)
+            event_detected(evrow, value)
             
 
 if __name__ == "__main__":
