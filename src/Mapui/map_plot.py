@@ -107,9 +107,9 @@ def main(app):
         for i, row in enumerate(event_limits.iterrows()):
             # Ensure limit is converted to a numeric type
             print(row)
-            limit = float(limit)
+            limit = float(row['limit'])
             
-            if absolute:
+            if row['absolute']:
                 limit = abs(limit)
                 
             row = (i // 4) + 1
