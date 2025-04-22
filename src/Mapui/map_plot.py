@@ -104,8 +104,9 @@ def main(app):
             specs=[[{"type": "indicator"}] * 4] * 2
         )
         
-        for i, (_, name, gid, data_type, limit, absolute) in enumerate(event_limits.iterrows()):
+        for i, row in enumerate(event_limits.iterrows()):
             # Ensure limit is converted to a numeric type
+            print(row)
             limit = float(limit)
             
             if absolute:
