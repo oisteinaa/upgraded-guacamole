@@ -68,11 +68,9 @@ def insert_event(typeid, value, comment):
     try:
         cursor.execute(query, (typeid, value, comment))
         conn.commit()
-        return True  # Indicate success
     except Exception as e:
         conn.rollback()  # Rollback in case of error
         print(f"Error inserting event: {e}")
-        return False  # Indicate failure
-    conn.commit()
-    cursor.close()
-    conn.close()
+    finally:
+        cursor.close()
+        conn.close()
