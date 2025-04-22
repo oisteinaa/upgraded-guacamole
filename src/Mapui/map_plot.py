@@ -100,7 +100,6 @@ def main(app):
         
         fig = make_subplots(
             rows=2, cols=4,
-            subplot_titles=[f"{name}" for name in event_limits.keys()],
             specs=[[{"type": "indicator"}] * 4] * 2
         )
         
