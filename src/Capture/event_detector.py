@@ -10,7 +10,7 @@ def event_detected(evrow, data):
     """
     Placeholder function to handle detected events.
     """
-    print(f"Event detected: {evrow} {data}")
+    print(f"Event detected: {evrow['data_type']}, {data}, {evrow['name']}")
     insert_event(evrow['data_type'], data, evrow['name'])
     
 
