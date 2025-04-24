@@ -27,7 +27,9 @@ def get_channel_data(channel_id):
     shape = buf['shape']
     data = np.array(buf['data']).reshape(shape)
     
-    channel_data = data[channel_id].tolist()
+    channel_data = {
+        'data': data[channel_id].tolist()
+    }
     return jsonify(channel_data)
     
         
