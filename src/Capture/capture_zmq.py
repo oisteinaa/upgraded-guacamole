@@ -97,7 +97,7 @@ def process_data(file, mastdf):
     headers = {'Content-Type': 'application/octet-stream'}
 
     # Include the shape of the data in the payload
-    data = f['data'][:, ::10]
+    data = f['data'][:, :]
     data.astype(np.int16)
     # serialized = msgpack.packb(data.tolist())
     # compressed = compress_data(data, compression_level=22)
