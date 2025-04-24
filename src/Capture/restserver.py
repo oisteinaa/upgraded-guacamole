@@ -19,7 +19,8 @@ def get_data():
     return Response(DATA, content_type='application/octet-stream')
 
 @app.route('/channel/<int:channel_id>', methods=['GET'])
-def get_channel_data(channel_id):    
+def get_channel_data(channel_id):
+    channel_id = int(int(channel_id)/4)    
     buf = msgpack.unpackb(DATA, raw=False)
     shape = buf['shape']
     data = np.array(buf['data']).reshape(shape)
