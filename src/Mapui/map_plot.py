@@ -247,15 +247,7 @@ def main(app):
 
         return fig
     
-    @app.callback(Output('plot-channel-graph', 'figure'),
-            Input('interval-component', 'n_intervals'),
-            State('plot_channel', 'data')
-    )
-    def update_channel_plot(_, ch):
-        print("Update channel plot", ch)
-        if ch is None:
-            return go.Figure()
-        
+    def get_single_channel_plot(ch):
         url = f'http://10.147.20.10:5000/channel/{ch}'
         data = requests.get(url).json()
         
@@ -270,6 +262,17 @@ def main(app):
         )
         
         return fig
+    
+    @app.callback(Output('plot-channel-graph', 'figure'),
+            Input('interval-component', 'n_intervals'),
+            State('plot_channel', 'data')
+    )
+    def update_channel_plot(_, ch):
+        print("Update channel plot", ch)
+        if ch is None:
+            return go.Figure()
+        
+        return get_single_channel_plot(ch)
     
     # Callbacks to store the selected values in dcc.Store
     @app.callback(
@@ -289,6 +292,20 @@ def main(app):
         return selected_value
     
     # New callback to handle click events on the scattermapbox
+    @app.callback(
+        Output('plot-channel-graph', 'figure'),
+        Input('live-update-map', 'clickData')
+    )
+    def update_plot_now(click_data):
+        if click_data is None:
+            return go.Figure()
+        
+        point_info = click_data['points'][0]
+        ch = point_info['customdata'][0]
+        
+        # Update the plot with the selected channel
+        return get_single_channel_plot(ch)
+    
     @app.callback(
         Output('plot_channel', 'data'),
         Input('live-update-map', 'clickData')
