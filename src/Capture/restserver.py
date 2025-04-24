@@ -16,13 +16,10 @@ def get_rms():
 
 @app.route('/rawdata')
 def get_data():
-    global DATA
     return Response(DATA, content_type='application/octet-stream')
 
 @app.route('/channel/<int:channel_id>', methods=['GET'])
-def get_channel_data(channel_id):
-    global DATA
-    
+def get_channel_data(channel_id):    
     buf = msgpack.unpackb(DATA, raw=False)
     shape = buf['shape']
     data = np.array(buf['data']).reshape(shape)
