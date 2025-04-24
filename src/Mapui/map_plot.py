@@ -292,19 +292,19 @@ def main(app):
         return selected_value
     
     # New callback to handle click events on the scattermapbox
-    @app.callback(
-        Output('plot-channel-graph', 'figure'),
-        Input('live-update-map', 'clickData')
-    )
-    def update_plot_now(click_data):
-        if click_data is None:
-            return go.Figure()
+    # @app.callback(
+    #     Output('plot-channel-graph', 'figure'),
+    #     Input('live-update-map', 'clickData')
+    # )
+    # def update_plot_now(click_data):
+    #     if click_data is None:
+    #         return go.Figure()
         
-        point_info = click_data['points'][0]
-        ch = point_info['customdata'][0]
+    #     point_info = click_data['points'][0]
+    #     ch = point_info['customdata'][0]
         
-        # Update the plot with the selected channel
-        return get_single_channel_plot(ch)
+    #     # Update the plot with the selected channel
+    #     return get_single_channel_plot(ch)
     
     @app.callback(
         Output('plot_channel', 'data'),
