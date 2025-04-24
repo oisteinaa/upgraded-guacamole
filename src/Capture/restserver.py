@@ -24,6 +24,9 @@ def get_channel_data(channel_id):
     shape = buf['shape']
     data = np.array(buf['data']).reshape(shape)
     
+    
+    print('Shape', data.shape)  
+    
     channel_data = {
         'data': data[:, channel_id].tolist()
     }
