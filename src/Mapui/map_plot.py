@@ -70,8 +70,8 @@ def main(app):
             ], style={'flex': '1', 'flex-direction': 'row','margin-right': '10px'}),
             html.Div([
                 dcc.Graph(id=f'gauges', style={'flex': '1 1 20%', 'min-width': '300px'}),
-                html.Div(id='click-output', style={'margin-top': '20px', 'font-size': '16px'}),
                 dcc.Graph(id='weather-graph', style={'height': '30vh'}),
+                html.Div(id='click-output', style={'margin-top': '20px', 'font-size': '16px'}),
                 dcc.Graph(id='plot-channel-graph', style={'height': '30vh'}),
                 dcc.Interval(
                     id='interval-component-weather',
@@ -319,7 +319,7 @@ def main(app):
         
         print(point_info)
 
-        return f"Clicked Point: Latitude: {lat}, Longitude: {lon}, Channel: {ch}"    
+        return f"Plot Point: Latitude: {lat}, Longitude: {lon}, Channel: {ch}"    
     return app
 
 
