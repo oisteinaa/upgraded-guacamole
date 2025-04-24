@@ -65,7 +65,7 @@ def process_data(file, mastdf):
     data = f['data']
     data = data.astype(np.float32)
     # Reverse the order of data on axis=1
-    data = data[:, ::-1]
+    data = np.flip(data, axis=1)
     
     with ThreadPoolExecutor() as executor:
         rms_future = executor.submit(get_rms, data)
