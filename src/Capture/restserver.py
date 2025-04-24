@@ -2,6 +2,8 @@
 
 from flask import Flask, jsonify, request, Response
 import json
+import msgpack
+import numpy as np
 
 app = Flask(__name__)
 
@@ -17,7 +19,18 @@ def get_data():
     global DATA
     return Response(DATA, content_type='application/octet-stream')
 
-
+@app.route('/channel/<int:channel_id>', methods=['POST'])
+def get_channel_data(channel_id):
+    global DATA
+    
+    buf = msgpack.unpackb(DATA, raw=False)
+    shape = buf['shape']
+    data = np.array(buf['data']).reshape(shape)
+    
+    channel_data = data[channel_id].tolist()
+    return jsonify(channel_data)
+    
+        
 @app.route('/rms', methods=['POST'])
 def add_rms():
     global RMS
