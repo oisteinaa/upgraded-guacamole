@@ -3,6 +3,7 @@
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from scipy.stats import gaussian_kde
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, dcc, html
@@ -253,11 +254,52 @@ def main(app):
         
         y_data = [item for item in data['data']]
         
+        mean = np.mean(y_data)
+        std_dev = np.std(y_data)
+        x_data = np.linspace(min(y_data), max(y_data), 100)
+        y_data_kde = gaussian_kde(y_data)
+        y_data = y_data_kde(x_data)
+        
+        
         fig = go.Figure()
         
         fig.add_trace(
             go.Scatter(
-                y=y_data,
+            x=x_data,
+            y=y_data,
+            name="Density"
+            )
+        )
+        
+        # Add a red vertical line at the mean
+        fig.add_trace(
+            go.Scatter(
+            x=[mean, mean],
+            y=[0, max(y_data)],
+            mode="lines",
+            line=dict(color="red", dash="dash"),
+            name="Mean"
+            )
+        )
+        
+        # Add black vertical lines at plus and minus one standard deviation
+        fig.add_trace(
+            go.Scatter(
+            x=[mean - std_dev, mean - std_dev],
+            y=[0, max(y_data)],
+            mode="lines",
+            line=dict(color="black", dash="dot"),
+            name="-1 Std Dev"
+            )
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+            x=[mean + std_dev, mean + std_dev],
+            y=[0, max(y_data)],
+            mode="lines",
+            line=dict(color="black", dash="dot"),
+            name="+1 Std Dev"
             )
         )
         
