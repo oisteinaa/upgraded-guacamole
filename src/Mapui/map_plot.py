@@ -4,6 +4,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from scipy.stats import gaussian_kde
+from scipy.signal import periodogram
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, dcc, html
@@ -38,42 +39,48 @@ def main(app):
                     interval=10 * 1000,  # in milliseconds
                     n_intervals=0
                 ),
-                
-                html.Div([
-                    html.Div([
-                        dcc.RadioItems(
-                            id='view-selector',
-                            options=[
-                                {'label': 'Open street map', 'value': 'open-street-map'},
-                                {'label': 'Satellite map', 'value': 'satellite'}
-                            ],
-                            value='open-street-map',
-                            style={'margin-top': '20px'}
-                        ),
-                        dcc.Store("map_type", storage_type="local", data="open-street-map"),
-                        dcc.Store("plot_channel", storage_type="local"),
-                    ], style={'flex': '1', 'margin-right': '10px'}),
+                dcc.RadioItems(
+                    id='view-selector',
+                    options=[
+                        {'label': 'Open street map', 'value': 'open-street-map'},
+                        {'label': 'Satellite map', 'value': 'satellite'}
+                    ],
+                    value='open-street-map',
+                    inline=True,
+                    style={'margin-top': '20px'}
+                ),
+                dcc.RadioItems(
+                    id='data-selector',
+                    options=[
+                        {'label': 'RMS', 'value': 'rms'},
+                        {'label': 'Variance', 'value': 'var'}
+                    ],
+                    value='rms',
+                    inline=True,
+                    style={'margin-top': '20px'}
+                ),
+                dcc.Store("data_type", storage_type="memory", data="rms"),
+                dcc.Store("map_type", storage_type="local", data="open-street-map"),
+                dcc.Store("plot_channel", storage_type="local"),
 
-                    html.Div([
-                        dcc.RadioItems(
-                            id='data-selector',
-                            options=[
-                                {'label': 'RMS', 'value': 'rms'},
-                                {'label': 'Variance', 'value': 'var'}
-                            ],
-                            value='rms',
-                            style={'margin-top': '20px'}
-                        ),
-                        dcc.Store("data_type", storage_type="memory", data="rms"),
-                    ], style={'flex': '1'}),
-                ], style={'display': 'flex', 'flex-direction': 'row', 'margin-top': '20px'}),
-                
             ], style={'flex': '1', 'flex-direction': 'row','margin-right': '10px'}),
+            
             html.Div([
                 dcc.Graph(id=f'gauges', style={'flex': '1 1 20%', 'min-width': '300px'}),
                 dcc.Graph(id='weather-graph', style={'height': '30vh'}),
                 html.Div(id='click-output', style={'margin-top': '20px', 'font-size': '16px'}),
                 dcc.Graph(id='plot-channel-graph', style={'height': '30vh'}),
+                dcc.RadioItems(
+                    id='data-selector-single',
+                    options=[
+                        {'label': 'Kernel density', 'value': 'kernel'},
+                        {'label': 'Spectral density', 'value': 'spectral'}
+                    ],
+                    value='kernel',
+                    inline=True,
+                    style={'margin-top': '20px'}
+                ),
+                dcc.Store("store_data_selector_single", storage_type="local"),
                 dcc.Interval(
                     id='interval-component-weather',
                     interval=1700 * 1000,  # in milliseconds
@@ -248,17 +255,26 @@ def main(app):
 
         return fig
     
-    def get_single_channel_plot(ch):
+    def get_single_channel_plot(ch, datatype='kernel'):
         url = f'http://10.147.20.10:5000/channel/{ch}'
         data = requests.get(url).json()
         
         y_data = [item for item in data['data']]
-        
-        mean = np.mean(y_data)
-        std_dev = np.std(y_data)
-        x_data = np.linspace(min(y_data), max(y_data), 100)
-        y_data_kde = gaussian_kde(y_data)
-        y_data = y_data_kde(x_data)
+        mean = 0
+        std_dev = 0
+        if datatype == 'kernel':
+            mean = np.mean(y_data)
+            std_dev = np.std(y_data)
+            x_data = np.linspace(min(y_data), max(y_data), 100)
+            y_data_kde = gaussian_kde(y_data)
+            y_data = y_data_kde(x_data)
+        else:
+            # Compute the periodogram using scipy.signal.periodogram
+            freqs, power = periodogram(y_data, fs=500)  # Assuming a sampling frequency of 500 Hz
+
+            # Skip the first sample and use frequency and power for the periodogram plot
+            x_data = freqs[1:]
+            y_data = power[1:]  # Convert power to decibels
         
         
         fig = go.Figure()
@@ -267,54 +283,61 @@ def main(app):
             go.Scatter(
             x=x_data,
             y=y_data,
-            name="Density"
+            name=datatype,
             )
         )
         
-        # Add a red vertical line at the mean
-        fig.add_trace(
-            go.Scatter(
-            x=[mean, mean],
-            y=[0, max(y_data)],
-            mode="lines",
-            line=dict(color="red", dash="dash"),
-            name="Mean"
-            )
-        )
+        # Set the x-axis to logarithmic scale
         
-        # Add black vertical lines at plus and minus one standard deviation
-        fig.add_trace(
-            go.Scatter(
-            x=[mean - std_dev, mean - std_dev],
-            y=[0, max(y_data)],
-            mode="lines",
-            line=dict(color="black", dash="dot"),
-            name="-1 Std Dev"
+        if datatype == 'kernel':
+            # Add a red vertical line at the mean
+            fig.add_trace(
+                go.Scatter(
+                x=[mean, mean],
+                y=[0, max(y_data)],
+                mode="lines",
+                line=dict(color="red", dash="dash"),
+                name="Mean"
+                )
             )
-        )
-        
-        fig.add_trace(
-            go.Scatter(
-            x=[mean + std_dev, mean + std_dev],
-            y=[0, max(y_data)],
-            mode="lines",
-            line=dict(color="black", dash="dot"),
-            name="+1 Std Dev"
+            
+            # Add black vertical lines at plus and minus one standard deviation
+            fig.add_trace(
+                go.Scatter(
+                x=[mean - std_dev, mean - std_dev],
+                y=[0, max(y_data)],
+                mode="lines",
+                line=dict(color="black", dash="dot"),
+                name="-1 Std Dev"
+                )
             )
-        )
+            
+            fig.add_trace(
+                go.Scatter(
+                x=[mean + std_dev, mean + std_dev],
+                y=[0, max(y_data)],
+                mode="lines",
+                line=dict(color="black", dash="dot"),
+                name="+1 Std Dev"
+                )
+            )
+        else:
+            fig.update_xaxes(type="log")
+            fig.update_yaxes(type="log")
         
         return fig
     
     @app.callback(Output('plot-channel-graph', 'figure'),
             Input('interval-component', 'n_intervals'),
-            State('plot_channel', 'data')
+            State('plot_channel', 'data'),
+            State('store_data_selector_single', 'data')
     )
-    def update_channel_plot(_, ch):
+    def update_channel_plot(_, ch, datatype):
         print("Update channel plot", ch)
         if ch is None:
             return go.Figure()
         
-        return get_single_channel_plot(ch)
+        return get_single_channel_plot(ch, datatype)
     
     # Callbacks to store the selected values in dcc.Store
     @app.callback(
@@ -333,20 +356,25 @@ def main(app):
         print(selected_value)
         return selected_value
     
+    @app.callback(
+        Output('store_data_selector_single', 'data'),
+        Input('data-selector-single', 'value')
+    )
+    def store_data_type_value_single(selected_value):
+        print(selected_value)
+        return selected_value
+    
     # New callback to handle click events on the scattermapbox
-    # @app.callback(
-    #     Output('plot-channel-graph', 'figure'),
-    #     Input('live-update-map', 'clickData')
-    # )
-    # def update_plot_now(click_data):
-    #     if click_data is None:
-    #         return go.Figure()
+    @app.callback(
+        Output('interval-component', 'n_intervals'),
+        Input('live-update-map', 'clickData'),
+        State('interval-component', 'n_intervals')
+    )
+    def trigger_interval(click_data, current_intervals):
+        if click_data is None:
+            return current_intervals
         
-    #     point_info = click_data['points'][0]
-    #     ch = point_info['customdata'][0]
-        
-    #     # Update the plot with the selected channel
-    #     return get_single_channel_plot(ch)
+        return current_intervals + 1
     
     @app.callback(
         Output('plot_channel', 'data'),

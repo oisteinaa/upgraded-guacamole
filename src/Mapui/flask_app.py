@@ -13,6 +13,7 @@ from config import app
 
 print("Initializing dash apps")
 # Initialize Dash app for RMS
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 print("Initializing rms app")
 rms_app = dash.Dash("rms_app", server=app, url_base_pathname='/rms/')
@@ -27,7 +28,7 @@ image_app = dash.Dash("image_app", server=app, url_base_pathname='/data/')
 image_plot.main(image_app)
 
 print("Initializing map app")
-map_app = dash.Dash("map_app", server=app, url_base_pathname='/maps/')
+map_app = dash.Dash("map_app", server=app, url_base_pathname='/maps/', external_stylesheets=external_stylesheets)
 map_plot.main(map_app)
 
 print("Initializing event log app")
