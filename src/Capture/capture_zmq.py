@@ -74,7 +74,7 @@ def process_data(file, mastdf):
     data = np.multiply(data, f['header']['dataScale'][()])
     data = unwrap(data, f['header']['spatialUnwrRange'][()],axis=1)
     data = np.cumsum(data,axis=0)*f['header']['dt']
-    data /= (f['header']['sensitivities'][0]*1e9)
+    data /= (f['header']['sensitivities'][0]/1e9)
     
     with ThreadPoolExecutor() as executor:
         rms_future = executor.submit(get_rms, data)
