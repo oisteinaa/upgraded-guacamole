@@ -180,7 +180,7 @@ def main(app):
             lon=gdf.geometry.x, 
             color='rms', 
             size='rms',
-            range_color=[0, 1000],
+            range_color=[0, 10000],
             zoom=11,
             # mapbox_style="open-street-map",
             map_style=map_type,
