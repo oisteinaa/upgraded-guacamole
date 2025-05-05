@@ -17,6 +17,11 @@ from sensnetlib.dbfunc import get_mastliste
 from concurrent.futures import ThreadPoolExecutor
 from event_detector import detect_events
 
+def unwrap(phi, wrapStep=2*np.pi, axis=-1):
+    scale = 2*np.pi/wrapStep
+
+    return (np.unwrap(phi*scale, axis=axis)/scale).astype(phi.dtype)
+
 def compress_data(data, compression_level=22):
     """
     Compress binary data using Zstandard with lossy compression.
@@ -67,6 +72,9 @@ def process_data(file, mastdf):
     # Reverse the order of data on axis=1
     data = np.flip(data, axis=1)
     data = np.multiply(data, f['header']['dataScale'][()])
+    data = unwrap(data, f['header']['spatialUnwrRange'],axis=1)
+    data = np.cumsum(data,axis=0)*f['header']['dt']
+    data /=f['header']['sensitivity']
     
     with ThreadPoolExecutor() as executor:
         rms_future = executor.submit(get_rms, data)
