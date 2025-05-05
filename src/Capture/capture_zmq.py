@@ -72,7 +72,7 @@ def process_data(file, mastdf):
     # Reverse the order of data on axis=1
     data = np.flip(data, axis=1)
     data = np.multiply(data, f['header']['dataScale'][()])
-    data = unwrap(data, f['header']['spatialUnwrRange'],axis=1)
+    data = unwrap(data, f['header']['spatialUnwrRange'][()],axis=1)
     data = np.cumsum(data,axis=0)*f['header']['dt']
     data /=f['header']['sensitivity']
     
