@@ -159,6 +159,8 @@ def main(app):
 
         geom['rms'] = pd.DataFrame(rms_json)
         geom['rms'] = geom['rms'].fillna(20)
+        geom['size'] = geom['rms']
+        geom['size'] = geom['size'].apply(lambda x: max(x, 40))
         #print(rmsdf)
 
         if geom['rms'].shape[0] < 1:
@@ -179,7 +181,7 @@ def main(app):
             lat=gdf.geometry.y, 
             lon=gdf.geometry.x, 
             color='rms', 
-            size='rms',
+            size='size',
             range_color=[0, 10000],
             zoom=11,
             # mapbox_style="open-street-map",
