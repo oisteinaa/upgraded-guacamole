@@ -58,7 +58,7 @@ def main(app):
         html.Label('Select Channel:'),
         dcc.Dropdown(
             id='column-selector',
-            options=[{'label': f'CHannel {i}', 'value': i} for i in range(1000)],
+            options=[{'label': f'Channel {i}', 'value': i} for i in range(3000)],
             value=0
         ),
 
