@@ -4,14 +4,33 @@ from flask import Flask, jsonify, request, Response
 import json
 import msgpack
 import numpy as np
+import os
 
 app = Flask(__name__)
 
 RMS = {'rms': [], 'var': [], 'data': []}  
 DATA = None
+DATA_PREFIX = '/raid1/sensnet_data'
 
 @app.route('/rms')
 def get_rms():
+    return jsonify(RMS)
+
+@app.route('/rms_history/<date>')
+def get_rms_history(date):
+    year = date[0:4]
+    month = date[5:7]
+    day = date[8:10]
+    directory = f'{DATA_PREFIX}/rms/{year}/{month}/{day}'
+    files = sorted([f for f in os.listdir(directory) if f.endswith('.json')])
+    
+    RMS = {'rms': [], 'var': [], 'data': []}
+    for fname in files:
+        with open(os.path.join(directory, fname), 'r') as f:
+            data = json.load(f)
+            for key in RMS:
+                if key in data:
+                    RMS[key].extend(data[key])
     return jsonify(RMS)
 
 @app.route('/rawdata')
