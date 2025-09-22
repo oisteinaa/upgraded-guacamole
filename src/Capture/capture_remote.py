@@ -79,15 +79,16 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 
 if __name__ == "__main__":
 	def usage():
-		print("Usage: capture_remote.py -s <srcpath> -h <hostname> -p <port>")
+		print("Usage: capture_remote.py -s <srcpath> -h <hostname> [-p <12345>] [--sim]")
 		sys.exit(1)
 
 	try:
-		opts, args = getopt.getopt(sys.argv[1:], "s:h:p:", ["srcpath=", "hostname=", "port="])
+		opts, args = getopt.getopt(sys.argv[1:], "s:h:p:", ["srcpath=", "hostname=", "port=", "sim"])
 	except getopt.GetoptError:
 		usage()
 
-	src_path = hostname = port = None
+	src_path = hostname = None
+	port = "12345"  # Default port
 
 	sim = False
 	for opt, arg in opts:
