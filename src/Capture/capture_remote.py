@@ -15,79 +15,34 @@ import msgpack
 import gzip
 from watchdog.events import FileSystemEvent
 import zmq
+import getopt
 
+def simulate_file_changes(src_path, hostname, port):
+	"""
+	Simulate file creation and modification events in the specified directory.
+	"""
+	context = zmq.Context()
+	socket = context.socket(zmq.PUSH)
+	socket.connect(f"tcp://{hostname}:{port}")
 
+	while True:
+		hdf5_files = [os.path.join(src_path, f) for f in os.listdir(src_path) if f.endswith('.hdf5')]
+		for filename in hdf5_files:
+			message = {'src_path': f'{src_path}/{filename}'}
+			message['dest_path'] = f'{src_path}/{filename}'
+			print(f'Send zmq message: {message}')
+			socket.send_json(message)
+			print(f'Message sent')
+		time.sleep(10)
 
-def process_data(file):
-	start = 0
-	tries = 50
-	while tries:
-		try:
-			f = h5py.File(file, 'r')
-			break
-		except:
-			print(f"Retry {tries}")
-			tries -= 1
-			time.sleep(1)
-
-	if tries == 0:
-		return
-
-	rms = []
-	data = f['data'][:]
-	data = data.astype(np.float32)
-	rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
-	rms_split = np.array_split(rms, 8)
-	rms_means = [np.mean(chunk) for chunk in rms_split]
- 
-	var = np.mean(data, axis=0).tolist()
-	print(rms[0], var[0], f['data'].shape) 
-
-	# serialized = msgpack.packb(data.tolist())
-	# compressed = gzip.compress(serialized)
-
-	# sys.exit(0)
-	start += 100
-	# rmsdf = pd.DataFrame(np.array(rms), columns=['rms'])
-
-	url = 'http://127.0.0.1:5000/rms'
-	rms_json = {
-		'time': time.time(), 
-		'rms': rms, 'var': var, 
-		'rms_means': rms_means,
-		# 'data': data[:, 1:350].tolist()
-	}
-	headers = {
-		'Content-type': 'application/json',
-		'Accept': 'application/json'
-	}
-	requests.post(url, json=json.dumps(rms_json), headers=headers)
-	
-	url = 'http://127.0.0.1:5000/rawdata'
-	headers = {'Content-Type': 'application/octet-stream'}
-
-	# Include the shape of the data in the payload
-	data = f['data'][:, ::4]
-	payload = {
-		'shape': data.shape,
-		'data': data.tolist()
-	}
-	
-	# Serialize the payload using msgpack
-	serialized_payload = msgpack.packb(payload)
-	
-	requests.post(url, data=serialized_payload, headers=headers)
-
+	socket.close()
+	context.term()
 	
 class Handler(watchdog.events.PatternMatchingEventHandler):
+	hostname = None
+	port = None
+
 	def __init__(self):
-		# Set the patterns for PatternMatchingEventHandler
-  
-		# for file in sorted(os.listdir(src_path)):
-		# 	if file.endswith('.hdf5'):
-		# 		process_data(os.path.join(src_path, file))
-		# 		time.sleep(2)
-  
 		watchdog.events.PatternMatchingEventHandler.__init__(self, patterns=['*.hdf5'],
 															ignore_directories=True, case_sensitive=True)
 
@@ -95,27 +50,21 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 		# print(event)
 
 	# def on_created(self, event):
-	# 	print(event.src_path)
+	#     print(event.src_path)
 		# Process(target=process_data, args=(f'{event.src_path}',)).start()
 
-	#	print("Watchdog received created event - % s." % event.src_path)
-	#	# Event is created, you can process it now
+	#    print("Watchdog received created event - % s." % event.src_path)
+	#    # Event is created, you can process it now
 
 	# def on_modified(self, event):
-	# 	print("Watchdog received modified event - % s." % event.src_path)
-	#	# Event is modified, you can process it now
+	#     print("Watchdog received modified event - % s." % event.src_path)
+	#    # Event is modified, you can process it now
  
 	def on_moved(self, event):
 		print(f"File moved from {event.src_path} to {event.dest_path}")
 		context = zmq.Context()
 		socket = context.socket(zmq.PUSH)
-		socket.connect("tcp://192.168.1.174:12345")
-
-		# # if isinstance(event, FileSystemEvent):
-		# # 	if hasattr(event, 'src_path'):
-		# # 		message = {'src_path': event.src_path}
-		# # 		if hasattr(event, 'dest_path'):
-		# 			# message['dest_path'] = event.dest_path
+		socket.connect(f"tcp://{self.hostname}:{self.port}")
 
 		message = {'src_path': event.src_path}
 		message['dest_path'] = event.dest_path
@@ -123,23 +72,51 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 		print(f'Send zmq message: {message}')
 		socket.send_json(message)
 		print(f'Message sent')
-		
-		# socket.close()
-		# context.term()
 
-		# Process(target=process_data, args=(f'{event.dest_path}',)).start()
-
-	# def on_closed(self, event):
-	#	print("Watchdog received closed event - % s." % event.src_path)
-	#	# Event is modified, you can process it now
+		socket.close()
+		context.term()
 
 
 if __name__ == "__main__":
-	# process_data(sys.argv[1])
-	src_path = sys.argv[1]
+	def usage():
+		print("Usage: capture_remote.py -s <srcpath> -h <hostname> -p <port>")
+		sys.exit(1)
+
+	try:
+		opts, args = getopt.getopt(sys.argv[1:], "s:h:p:", ["srcpath=", "hostname=", "port="])
+	except getopt.GetoptError:
+		usage()
+
+	src_path = hostname = port = None
+
+	sim = False
+	for opt, arg in opts:
+		if opt in ("-s", "--srcpath"):
+			src_path = arg
+		elif opt in ("-h", "--hostname"):
+			hostname = arg
+		elif opt in ("-p", "--port"):
+			port = arg
+		elif opt == "--sim":
+			sim = True
+
+	if not src_path or not hostname or not port:
+		usage()
+
+	if sim:
+		try:
+			simulate_file_changes(src_path, hostname, port)
+			print("Simulation completed.")
+			sys.exit(0)
+		except KeyboardInterrupt:
+			print("Simulation interrupted by user.")
+			sys.exit(0)
+
 	event_handler = Handler()
 	observer = watchdog.observers.Observer()
 	observer.schedule(event_handler, path=src_path, recursive=True)
+	observer.hostname = hostname
+	observer.port = port
 	observer.start()
 	try:
 		while True:
