@@ -19,7 +19,9 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from sensnetlib.dbfunc import get_mastliste, get_weather, get_event_limits
 
-def main(app):
+IPADDR_RESTSERVER = 'http://10.147.20.10:5000'
+
+def main(app, live_data=True):
     global geom
 
     # stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -92,9 +94,11 @@ def main(app):
 
     # Cache the response from the REST server
     @cache.memoize()
-    def get_rms_data():
-        url = 'http://127.0.0.1:5000/rms'
-        url = 'http://10.147.20.10:5000/rms'
+    def get_rms_data(live_data=True, date=None):
+        if live_data:
+            url = f'{IPADDR_RESTSERVER}/rms'
+        else:
+            url = f'{IPADDR_RESTSERVER}/rms_history'
         r = requests.get(url)
         return r.json()
 
