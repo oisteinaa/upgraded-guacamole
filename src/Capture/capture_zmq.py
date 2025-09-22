@@ -17,6 +17,8 @@ from sensnetlib.dbfunc import get_mastliste
 from concurrent.futures import ThreadPoolExecutor
 from event_detector import detect_events
 
+DATA_PREFIX = '/raid1/sensnet_data/'
+
 def unwrap(phi, wrapStep=2*np.pi, axis=-1):
     scale = 2*np.pi/wrapStep
 
@@ -35,19 +37,33 @@ def compress_data(data, compression_level=22):
     compressed = compressor.compress(serialized)
     return compressed
 
-def get_rms(data):
-    return np.sqrt(np.mean(np.square(data), axis=0)).tolist()
-    
-def get_variance(data):
-    return np.var(data, axis=0).tolist()
+def get_rms(data, filename=None):
+    rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
+    directory = f'{DATA_PREFIX}rms/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
+    if filename:
+        with open(f"{directory}/{filename}_rms.json", "w") as f:
+            json.dump(rms, f)
+    return rms
 
-def get_rms_chunks(rms, mastdf):
+def get_variance(data, filename=None):
+    var = np.var(data, axis=0).tolist()
+    directory = f'{DATA_PREFIX}variance/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
+    if filename:
+        with open(f"{directory}/{filename}_var.json", "w") as f:
+            json.dump(var, f)
+    return var
+
+def get_rms_chunks(rms, mastdf, filename=None):
     rms_means = []
+    directory = f'{DATA_PREFIX}rms_means/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
     for gid in mastdf['gid'].unique():
         indices = mastdf[mastdf['gid'] == gid].index
         rms_chunk = [rms[i] for i in indices if i < len(rms)]
         if rms_chunk:
             rms_means.append(np.mean(rms_chunk))
+    if filename:
+        with open(f"{directory}/{filename}_rms_means.json", "w") as f:
+            json.dump(rms_means, f)
             
     return rms_means
 
@@ -77,9 +93,9 @@ def process_data(file, mastdf):
     data /= (f['header']['sensitivities'][0]/1e9)
     
     with ThreadPoolExecutor() as executor:
-        rms_future = executor.submit(get_rms, data)
-        var_future = executor.submit(get_variance, data)
-        rms_means_future = executor.submit(get_rms_chunks, rms_future.result(), mastdf)
+        rms_future = executor.submit(get_rms, data, file)
+        var_future = executor.submit(get_variance, data, file)
+        rms_means_future = executor.submit(get_rms_chunks, rms_future.result(), mastdf, file)
 
         rms = rms_future.result()
         var = var_future.result()
