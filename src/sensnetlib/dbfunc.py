@@ -1,6 +1,6 @@
 import psycopg2
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 # import sys
 
@@ -23,7 +23,7 @@ def get_mastliste():
     LIMIT 8356;
     """
     conn = get_db_conn()
-    df = pd.read_sql_query(query, conn)
+    df = pd.read_sql_query(text(query), conn)
     conn.close()
     
     return df
