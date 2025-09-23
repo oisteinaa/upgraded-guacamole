@@ -42,12 +42,12 @@ def get_rms(data, filename=None):
     filename = os.path.basename(filename).replace('.hdf5','')
     directory = f'{DATA_PREFIX}rms/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
     
-    # if not os.path.exists(directory):
-    #     os.makedirs(directory, exist_ok=True)
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
     
-    # if filename:
-    #     with open(f"{directory}/{filename}_rms.json", "w") as f:
-    #         json.dump(rms, f)
+    if filename:
+        with open(f"{directory}/{filename}_rms.json", "w") as f:
+            json.dump(rms, f)
     return rms
 
 def get_variance(data, filename=None):
@@ -55,12 +55,12 @@ def get_variance(data, filename=None):
     filename = os.path.basename(filename).replace('.hdf5','')
     directory = f'{DATA_PREFIX}variance/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
     
-    # if not os.path.exists(directory):
-    #     os.makedirs(directory, exist_ok=True)
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
     
-    # if filename:
-    #     with open(f"{directory}/{filename}_var.json", "w") as f:
-    #         json.dump(var, f)
+    if filename:
+        with open(f"{directory}/{filename}_var.json", "w") as f:
+            json.dump(var, f)
     return var
 
 def get_rms_chunks(rms, mastdf, filename=None):
@@ -68,17 +68,17 @@ def get_rms_chunks(rms, mastdf, filename=None):
     filename = os.path.basename(filename).replace('.hdf5','')
     directory = f'{DATA_PREFIX}rms_means/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
     
-    # if not os.path.exists(directory):
-    #     os.makedirs(directory, exist_ok=True)
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
         
     for gid in mastdf['gid'].unique():
         indices = mastdf[mastdf['gid'] == gid].index
         rms_chunk = [rms[i] for i in indices if i < len(rms)]
         if rms_chunk:
             rms_means.append(np.mean(rms_chunk))
-    # if filename:
-    #     with open(f"{directory}/{filename}_rms_means.json", "w") as f:
-    #         json.dump(rms_means, f)
+    if filename:
+        with open(f"{directory}/{filename}_rms_means.json", "w") as f:
+            json.dump(rms_means, f)
             
     return rms_means
 
@@ -101,7 +101,9 @@ def process_data(file, mastdf):
 
     start_data_time = time.time()
     rms = []
+    start_read_time = time.time()
     data = f['data']
+    print(f"Time taken to read data: {time.time() - start_read_time:.4f} seconds")
     data = data.astype(np.float32)
     # Reverse the order of data on axis=1
     data = np.flip(data, axis=1)
@@ -115,11 +117,11 @@ def process_data(file, mastdf):
     with ThreadPoolExecutor() as executor:
         rms_future = executor.submit(get_rms, data, file)
         var_future = executor.submit(get_variance, data, file)
-        # rms_means_future = executor.submit(get_rms_chunks, rms_future.result(), mastdf, file)
+        rms_means_future = executor.submit(get_rms_chunks, rms_future.result(), mastdf, file)
 
         rms = rms_future.result()
         var = var_future.result()
-        # rms_means = rms_means_future.result()
+        rms_means = rms_means_future.result()
     print(f"Time taken to compute metrics: {time.time() - start_metrics_time:.4f} seconds")
         
     # Run detect_events in a separate thread
