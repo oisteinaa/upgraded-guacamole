@@ -5,6 +5,7 @@ import json
 import msgpack
 import numpy as np
 import os
+import sys
 
 app = Flask(__name__)
 
@@ -28,6 +29,8 @@ def get_rms_history(date):
     for fname in files:
         with open(os.path.join(directory, fname), 'r') as f:
             data = json.load(f)
+            print(data.keys())
+            sys.stdout.flush()
             for key in RMS:
                 if key in data:
                     RMS[key].extend(data[key])
