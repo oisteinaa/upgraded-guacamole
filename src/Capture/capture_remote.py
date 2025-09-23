@@ -33,7 +33,7 @@ def simulate_file_changes(src_path, hostname, port):
 			print(f'Send zmq message: {message}')
 			socket.send_json(message)
 			print(f'Message sent')
-		time.sleep(10)
+			time.sleep(10)
 
 	socket.close()
 	context.term()
