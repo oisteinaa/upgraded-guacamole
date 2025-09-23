@@ -56,6 +56,7 @@ def process_data():
     for weeks in [1, 2, 4]:
         start_time = now - datetime.timedelta(weeks=weeks)
         directories = get_directories_between(start_time, now)
+        print(f"Processing {weeks} weeks: Directories - {directories}")
         rms_files = get_rms_files(directories, start_time, now)
         avg_rms = calculate_average_rms(rms_files)
         results[f"{weeks}_weeks"] = avg_rms
