@@ -39,6 +39,7 @@ def compress_data(data, compression_level=22):
 
 def get_rms(data, filename=None):
     rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
+    filename = os.path.basename(filename).replace('.hdf5','')
     directory = f'{DATA_PREFIX}rms/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
     
     if not os.path.exists(directory):
@@ -51,6 +52,7 @@ def get_rms(data, filename=None):
 
 def get_variance(data, filename=None):
     var = np.var(data, axis=0).tolist()
+    filename = os.path.basename(filename).replace('.hdf5','')
     directory = f'{DATA_PREFIX}variance/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
     
     if not os.path.exists(directory):
@@ -63,6 +65,7 @@ def get_variance(data, filename=None):
 
 def get_rms_chunks(rms, mastdf, filename=None):
     rms_means = []
+    filename = os.path.basename(filename).replace('.hdf5','')
     directory = f'{DATA_PREFIX}rms_means/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
     
     if not os.path.exists(directory):
