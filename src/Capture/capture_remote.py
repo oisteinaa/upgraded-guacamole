@@ -28,8 +28,8 @@ def simulate_file_changes(src_path, hostname, port):
 	while True:
 		hdf5_files = [os.path.join(src_path, f) for f in os.listdir(src_path) if f.endswith('.hdf5')]
 		for filename in hdf5_files:
-			message = {'src_path': f'{src_path}/{filename}'}
-			message['dest_path'] = f'{src_path}/{filename}'
+			message = {'src_path': f'{filename}'}
+			message['dest_path'] = f'{filename}'
 			print(f'Send zmq message: {message}')
 			socket.send_json(message)
 			print(f'Message sent')
