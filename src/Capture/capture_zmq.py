@@ -18,6 +18,8 @@ from sensnetlib.dbfunc import get_mastliste
 from concurrent.futures import ThreadPoolExecutor
 from event_detector import detect_events
 import re
+import shutil
+from datetime import datetime, timedelta
 
 DATA_PREFIX = '/raid1/sensnet_data/'
 GET_DATE = re.compile(r'/(\d{8})/')
@@ -40,6 +42,19 @@ def compress_data(data, compression_level=22):
     compressed = compressor.compress(serialized)
     return compressed
 
+def delete_old_files(directory, days=31):
+    # Calculate the target date directory to delete
+    target_date = (datetime.strptime(os.path.basename(os.path.normpath(directory)), "%Y/%m/%d") - timedelta(days=days)).strftime("%Y/%m/%d")
+    # If directory is like /raid1/sensnet_data/rms/2025/09/23/, get its parent up to /raid1/sensnet_data/rms/
+    base_dir = os.path.join(*directory.rstrip('/').split('/')[:-3])
+    dir_path = os.path.join(base_dir, target_date)
+    if os.path.isdir(dir_path):
+        try:
+            shutil.rmtree(dir_path)
+            print(f"Deleted old directory: {dir_path}")
+        except Exception as e:
+            print(f"Failed to delete {dir_path}: {e}")
+    
 def get_date(filename):
     # Find the date part in the path (expects /YYYYMMDD/ somewhere in the path)
     # Use a globally compiled regex for performance
@@ -62,6 +77,7 @@ def get_rms(data, filename=None):
     rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
     year, month, day = get_date(filename)
     directory = f'{DATA_PREFIX}rms/{year}/{month}/{day}'
+    delete_old_files(directory)
     filename = os.path.basename(filename).replace('.hdf5','')
     
     if not os.path.exists(directory):
@@ -76,6 +92,7 @@ def get_variance(data, filename=None):
     var = np.var(data, axis=0).tolist()
     year, month, day = get_date(filename)
     directory = f'{DATA_PREFIX}variance/{year}/{month}/{day}'
+    delete_old_files(directory)
     filename = os.path.basename(filename).replace('.hdf5','')
     
     if not os.path.exists(directory):
@@ -90,6 +107,7 @@ def get_rms_chunks(rms, mastdf, filename=None):
     rms_means = []
     year, month, day = get_date(filename)
     directory = f'{DATA_PREFIX}rms_means/{year}/{month}/{day}'
+    delete_old_files(directory)
     filename = os.path.basename(filename).replace('.hdf5','')
     
     if not os.path.exists(directory):
