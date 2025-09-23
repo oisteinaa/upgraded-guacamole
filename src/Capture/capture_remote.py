@@ -27,6 +27,7 @@ def simulate_file_changes(src_path, hostname, port):
 
 	while True:
 		hdf5_files = [os.path.join(src_path, f) for f in os.listdir(src_path) if f.endswith('.hdf5')]
+		hdf5_files.sort()  # Sort files alphabetically
 		for filename in hdf5_files:
 			message = {'src_path': f'{filename}'}
 			message['dest_path'] = f'{filename}'
