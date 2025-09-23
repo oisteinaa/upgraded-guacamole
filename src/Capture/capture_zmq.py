@@ -115,11 +115,11 @@ def process_data(file, mastdf):
     with ThreadPoolExecutor() as executor:
         rms_future = executor.submit(get_rms, data, file)
         var_future = executor.submit(get_variance, data, file)
-        rms_means_future = executor.submit(get_rms_chunks, rms_future.result(), mastdf, file)
+        # rms_means_future = executor.submit(get_rms_chunks, rms_future.result(), mastdf, file)
 
         rms = rms_future.result()
         var = var_future.result()
-        rms_means = rms_means_future.result()
+        # rms_means = rms_means_future.result()
     print(f"Time taken to compute metrics: {time.time() - start_metrics_time:.4f} seconds")
         
     # Run detect_events in a separate thread
