@@ -87,7 +87,9 @@ def process_data(file, mastdf):
     tries = 50
     while tries:
         try:
+            start_time = time.time()
             f = h5py.File(file, 'r')
+            print(f"Time taken to open file: {time.time() - start_time:.4f} seconds")
             break
         except:
             print(f"Retry {tries}")
@@ -97,16 +99,19 @@ def process_data(file, mastdf):
     if tries == 0:
         return
 
+    start_data_time = time.time()
     rms = []
     data = f['data']
     data = data.astype(np.float32)
     # Reverse the order of data on axis=1
     data = np.flip(data, axis=1)
     data = np.multiply(data, f['header']['dataScale'][()])
-    data = unwrap(data, f['header']['spatialUnwrRange'][()],axis=1)
-    data = np.cumsum(data,axis=0)*f['header']['dt']
-    data /= (f['header']['sensitivities'][0]/1e9)
+    data = unwrap(data, f['header']['spatialUnwrRange'][()], axis=1)
+    data = np.cumsum(data, axis=0) * f['header']['dt']
+    data /= (f['header']['sensitivities'][0] / 1e9)
+    print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
     
+    start_metrics_time = time.time()
     with ThreadPoolExecutor() as executor:
         rms_future = executor.submit(get_rms, data, file)
         var_future = executor.submit(get_variance, data, file)
@@ -115,6 +120,7 @@ def process_data(file, mastdf):
         rms = rms_future.result()
         var = var_future.result()
         rms_means = rms_means_future.result()
+    print(f"Time taken to compute metrics: {time.time() - start_metrics_time:.4f} seconds")
         
     # Run detect_events in a separate thread
     thread = ThreadPoolExecutor(max_workers=1)
