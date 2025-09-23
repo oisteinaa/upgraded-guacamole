@@ -8,7 +8,7 @@ def get_db_conn():
     engine = create_engine(
         "postgresql+psycopg2://sensnetdbu:obs@10.147.20.10:5432/sensnetdb"
     )
-    return engine.connect()
+    return engine
 
 def get_mastliste():
     # Execute the query and fetch data
@@ -22,10 +22,9 @@ def get_mastliste():
     ORDER BY channel DESC 
     LIMIT 8356;
     """
-    conn = get_db_conn()
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    
+    engine = get_db_conn()
+    with engine.connect() as conn:
+        df = pd.read_sql_query(query, conn)
     return df
 
 def get_weather():
