@@ -25,15 +25,12 @@ def get_rms_history(date):
     directory = f'{DATA_PREFIX}/rms/{year}/{month}/{day}'
     files = sorted([f for f in os.listdir(directory) if f.endswith('.json')])
     
-    RMS = {'rms': [], 'var': [], 'data': []}
+    RMS = []
     for fname in files:
         with open(os.path.join(directory, fname), 'r') as f:
             data = json.load(f)
-            print(data.keys())
-            sys.stdout.flush()
-            for key in RMS:
-                if key in data:
-                    RMS[key].extend(data[key])
+            RMS.extend(data)
+            
     return jsonify(RMS)
 
 @app.route('/rawdata')
