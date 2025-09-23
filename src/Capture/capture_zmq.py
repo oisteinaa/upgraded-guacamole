@@ -107,9 +107,13 @@ def process_data(file, mastdf):
     data = data.astype(np.float32)
     # Reverse the order of data on axis=1
     data = np.flip(data, axis=1)
+    print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
     data = np.multiply(data, f['header']['dataScale'][()])
+    print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
     data = unwrap(data, f['header']['spatialUnwrRange'][()], axis=1)
+    print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
     data = np.cumsum(data, axis=0) * f['header']['dt']
+    print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
     data /= (f['header']['sensitivities'][0] / 1e9)
     print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
     
