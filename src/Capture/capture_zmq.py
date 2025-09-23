@@ -108,7 +108,8 @@ def process_data(file, mastdf):
     # Reverse the order of data on axis=1
     data = np.flip(data, axis=1)
     print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
-    data = np.multiply(data, f['header']['dataScale'][()])
+    # Use in-place multiplication for better performance and lower memory usage
+    data *= f['header']['dataScale'][()]
     print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
     data = unwrap(data, f['header']['spatialUnwrRange'][()], axis=1)
     print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
