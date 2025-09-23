@@ -20,19 +20,26 @@ def process_data():
         return rms_files
 
     def calculate_average_rms(rms_files):
-        rms_values = []
+        sample_sums = []
+        sample_counts = []
         for fpath in rms_files:
             try:
                 with open(fpath, 'r') as f:
                     data = json.load(f)
-                    rms = data.get('rms')
-                    if rms is not None:
-                        rms_values.append(rms)
+                    if isinstance(data, list):
+                        for i, rms in enumerate(data):
+                            if len(sample_sums) <= i:
+                                sample_sums.append(0.0)
+                                sample_counts.append(0)
+                            if rms is not None:
+                                sample_sums[i] += rms
+                                sample_counts[i] += 1
             except Exception:
                 continue
-        if rms_values:
-            return sum(rms_values) / len(rms_values)
-        return None
+        averages = []
+        for s, c in zip(sample_sums, sample_counts):
+            averages.append(s / c if c > 0 else None)
+        return averages if averages else None
 
     def get_directories_between(start_time, end_time):
         directories = []
