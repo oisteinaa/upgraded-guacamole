@@ -89,9 +89,8 @@ def process_data(file, mastdf):
     while tries:
         try:
             start_time = time.time()
-            with open(file, 'rb') as file_obj:
-                file_bytes = file_obj.read()
-            f = h5py.File(file_bytes, 'r')
+            f = h5py.File(file, 'r')
+            f.read_direct(f['data'])  # Ensure data is read into memory
             print(f"Time taken to open file: {time.time() - start_time:.4f} seconds")
             break
         except:
