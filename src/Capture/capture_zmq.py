@@ -112,16 +112,14 @@ def process_data(file, mastdf):
 
     # Use numpy's in-place multiplication for speed
     # data *= f['header']['dataScale'][()]
-    # For even faster processing, consider using numexpr if dataScale is a scalar:
-    data = ne.evaluate("data * scale", local_dict={'data': data, 'scale': f['header']['dataScale'][()]})
     # For parallel processing, you could use numpy's array_split and ThreadPoolExecutor:
-    # scale = f['header']['dataScale'][()]
-    # chunks = np.array_split(data, os.cpu_count(), axis=0)
-    # def scale_chunk(chunk):
-    #     chunk *= scale
-    #     return chunk
-    # with ThreadPoolExecutor() as executor:
-    #     data = np.concatenate(list(executor.map(scale_chunk, chunks)), axis=0)
+    scale = f['header']['dataScale'][()]
+    chunks = np.array_split(data, os.cpu_count(), axis=0)
+    def scale_chunk(chunk):
+        chunk *= scale
+        return chunk
+    with ThreadPoolExecutor() as executor:
+        data = np.concatenate(list(executor.map(scale_chunk, chunks)), axis=0)
     print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
     data = unwrap(data, f['header']['spatialUnwrRange'][()], axis=1)
     print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
