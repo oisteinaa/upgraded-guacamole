@@ -13,15 +13,10 @@ def process_data():
             for fname in os.listdir(directory):
                 if fname.endswith('.json'):
                     try:
-                        parts = fname.split('_')
-                        if len(parts) < 3:
-                            continue
-                        dt_str = parts[1] + parts[2].replace('.json', '')
-                        file_time = datetime.datetime.strptime(dt_str, "%Y%m%d%H%M%S")
-                        if start_time <= file_time <= end_time:
-                            rms_files.append(os.path.join(directory, fname))
+                        rms_files.append(os.path.join(directory, fname))
                     except Exception:
                         continue
+        print(f"Found {len(rms_files)} RMS files between {start_time} and {end_time}")
         return rms_files
 
     def calculate_average_rms(rms_files):
@@ -56,7 +51,6 @@ def process_data():
     for weeks in [1, 2, 4]:
         start_time = now - datetime.timedelta(weeks=weeks)
         directories = get_directories_between(start_time, now)
-        print(f"Processing {weeks} weeks: Directories - {directories}")
         rms_files = get_rms_files(directories, start_time, now)
         avg_rms = calculate_average_rms(rms_files)
         results[f"{weeks}_weeks"] = avg_rms
