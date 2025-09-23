@@ -92,7 +92,8 @@ def process_data(file, mastdf):
             f = h5py.File(file, 'r')
             print(f"Time taken to open file: {time.time() - start_time:.4f} seconds")
             break
-        except:
+        except Exception as e:
+            print(f"Error opening file: {e}")
             print(f"Retry {tries}")
             tries -= 1
             time.sleep(1)
