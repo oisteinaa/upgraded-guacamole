@@ -40,6 +40,10 @@ def compress_data(data, compression_level=22):
 def get_rms(data, filename=None):
     rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
     directory = f'{DATA_PREFIX}rms/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
+    
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+    
     if filename:
         with open(f"{directory}/{filename}_rms.json", "w") as f:
             json.dump(rms, f)
@@ -48,6 +52,10 @@ def get_rms(data, filename=None):
 def get_variance(data, filename=None):
     var = np.var(data, axis=0).tolist()
     directory = f'{DATA_PREFIX}variance/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
+    
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+    
     if filename:
         with open(f"{directory}/{filename}_var.json", "w") as f:
             json.dump(var, f)
@@ -56,6 +64,10 @@ def get_variance(data, filename=None):
 def get_rms_chunks(rms, mastdf, filename=None):
     rms_means = []
     directory = f'{DATA_PREFIX}rms_means/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
+    
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+        
     for gid in mastdf['gid'].unique():
         indices = mastdf[mastdf['gid'] == gid].index
         rms_chunk = [rms[i] for i in indices if i < len(rms)]

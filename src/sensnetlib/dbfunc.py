@@ -1,18 +1,14 @@
 import psycopg2
 import pandas as pd
+from sqlalchemy import create_engine
 
 # import sys
 
 def get_db_conn():
-    conn = psycopg2.connect(
-        dbname="sensnetdb",
-        user="sensnetdbu",
-        password="obs",
-        host="10.147.20.10",
-        port="5432"
+    engine = create_engine(
+        "postgresql+psycopg2://sensnetdbu:obs@10.147.20.10:5432/sensnetdb"
     )
-    
-    return conn
+    return engine.connect()
 
 def get_mastliste():
     # Execute the query and fetch data
