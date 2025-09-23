@@ -19,8 +19,8 @@ def get_rms():
 @app.route('/rms_history/<date>')
 def get_rms_history(date):
     year = date[0:4]
-    month = date[5:7]
-    day = date[8:10]
+    month = date[4:6]
+    day = date[6:8]
     directory = f'{DATA_PREFIX}/rms/{year}/{month}/{day}'
     files = sorted([f for f in os.listdir(directory) if f.endswith('.json')])
     

@@ -17,8 +17,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from sensnetlib.dbfunc import get_mastliste
 from concurrent.futures import ThreadPoolExecutor
 from event_detector import detect_events
+import re
 
 DATA_PREFIX = '/raid1/sensnet_data/'
+GET_DATE = re.compile(r'/(\d{8})/')
 
 def unwrap(phi, wrapStep=2*np.pi, axis=-1):
     scale = 2*np.pi/wrapStep
@@ -38,10 +40,29 @@ def compress_data(data, compression_level=22):
     compressed = compressor.compress(serialized)
     return compressed
 
+def get_date(filename):
+    # Find the date part in the path (expects /YYYYMMDD/ somewhere in the path)
+    # Use a globally compiled regex for performance
+    match = GET_DATE.search(filename)
+
+    if match:
+        date_str = match.group(1)
+        year = date_str[:4]
+        month = date_str[4:6]
+        day = date_str[6:8]
+    else:
+        # Fallback to current date if not found
+        year = time.strftime("%Y")
+        month = time.strftime("%m")
+        day = time.strftime("%d")
+
+    return year, month, day
+
 def get_rms(data, filename=None):
     rms = np.sqrt(np.mean(np.square(data), axis=0)).tolist()
+    year, month, day = get_date(filename)
+    directory = f'{DATA_PREFIX}rms/{year}/{month}/{day}'
     filename = os.path.basename(filename).replace('.hdf5','')
-    directory = f'{DATA_PREFIX}rms/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
     
     if not os.path.exists(directory):
         os.makedirs(directory, exist_ok=True)
@@ -53,8 +74,9 @@ def get_rms(data, filename=None):
 
 def get_variance(data, filename=None):
     var = np.var(data, axis=0).tolist()
+    year, month, day = get_date(filename)
+    directory = f'{DATA_PREFIX}variance/{year}/{month}/{day}'
     filename = os.path.basename(filename).replace('.hdf5','')
-    directory = f'{DATA_PREFIX}variance/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
     
     if not os.path.exists(directory):
         os.makedirs(directory, exist_ok=True)
@@ -66,8 +88,9 @@ def get_variance(data, filename=None):
 
 def get_rms_chunks(rms, mastdf, filename=None):
     rms_means = []
+    year, month, day = get_date(filename)
+    directory = f'{DATA_PREFIX}rms_means/{year}/{month}/{day}'
     filename = os.path.basename(filename).replace('.hdf5','')
-    directory = f'{DATA_PREFIX}rms_means/{time.strftime("%Y")}/{time.strftime("%m")}/{time.strftime("%d")}'
     
     if not os.path.exists(directory):
         os.makedirs(directory, exist_ok=True)

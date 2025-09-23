@@ -36,7 +36,7 @@ def get_weather():
     """
     
     conn = get_db_conn()
-    df = pd.read_sql_query(query, conn)
+    df = pd.read_sql_query(text(query), conn)
     conn.close()
     
     return df
@@ -48,7 +48,7 @@ def get_event_limits():
     """
     
     conn = get_db_conn()
-    df = pd.read_sql_query(query, conn)
+    df = pd.read_sql_query(text(query), conn)
     conn.close()
     
     return df
@@ -60,7 +60,7 @@ def get_event_data():
     """
     
     conn = get_db_conn()
-    df = pd.read_sql_query(query, conn)
+    df = pd.read_sql_query(text(query), conn)
     conn.close()
     
     return df
@@ -74,7 +74,7 @@ def insert_event(typeid, value, comment):
     conn = get_db_conn()
     cursor = conn.cursor()
     try:
-        cursor.execute(query, (typeid, value, comment))
+        cursor.execute(text(query), (typeid, value, comment))
         conn.commit()
     except Exception as e:
         conn.rollback()  # Rollback in case of error

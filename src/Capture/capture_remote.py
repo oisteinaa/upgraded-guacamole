@@ -46,20 +46,6 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 	def __init__(self):
 		watchdog.events.PatternMatchingEventHandler.__init__(self, patterns=['*.hdf5'],
 															ignore_directories=True, case_sensitive=True)
-
-	# def on_any_event(self, event):
-		# print(event)
-
-	# def on_created(self, event):
-	#     print(event.src_path)
-		# Process(target=process_data, args=(f'{event.src_path}',)).start()
-
-	#    print("Watchdog received created event - % s." % event.src_path)
-	#    # Event is created, you can process it now
-
-	# def on_modified(self, event):
-	#     print("Watchdog received modified event - % s." % event.src_path)
-	#    # Event is modified, you can process it now
  
 	def on_moved(self, event):
 		print(f"File moved from {event.src_path} to {event.dest_path}")
