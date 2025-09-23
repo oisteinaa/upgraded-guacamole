@@ -163,8 +163,8 @@ def zmq_server():
     
     while True:
         message = socket.recv_json()
-        process_data(message['dest_path'], df)
         print(f"Received message: {message}")
+        process_data(message['dest_path'], df)
 
 if __name__ == "__main__":
     zmq_server()
