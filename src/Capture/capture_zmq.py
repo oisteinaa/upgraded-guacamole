@@ -112,7 +112,7 @@ def process_data(file, mastdf):
     print(f"Time taken to process data: {time.time() - start_data_time:.4f} seconds")
 
     # Use numpy's in-place multiplication for speed
-    # data *= f['header']['dataScale'][()]
+    data *= f['header']['dataScale'][()]
     # For parallel processing, you could use numpy's array_split and ThreadPoolExecutor:
     # scale = f['header']['dataScale'][()]
     # chunks = np.array_split(data, os.cpu_count(), axis=0)
