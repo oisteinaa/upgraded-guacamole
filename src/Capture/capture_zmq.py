@@ -44,16 +44,19 @@ def compress_data(data, compression_level=22):
 
 def delete_old_files(directory, days=31):
     # Calculate the target date directory to delete
-    target_date = (datetime.strptime(os.path.basename(os.path.normpath(directory)), "%Y/%m/%d") - timedelta(days=days)).strftime("%Y/%m/%d")
-    # If directory is like /raid1/sensnet_data/rms/2025/09/23/, get its parent up to /raid1/sensnet_data/rms/
-    base_dir = os.path.join(*directory.rstrip('/').split('/')[:-3])
-    dir_path = os.path.join(base_dir, target_date)
-    if os.path.isdir(dir_path):
-        try:
-            shutil.rmtree(dir_path)
-            print(f"Deleted old directory: {dir_path}")
-        except Exception as e:
-            print(f"Failed to delete {dir_path}: {e}")
+    try:
+        target_date = (datetime.strptime(os.path.basename(os.path.normpath(directory)), "%Y/%m/%d") - timedelta(days=days)).strftime("%Y/%m/%d")
+        # If directory is like /raid1/sensnet_data/rms/2025/09/23/, get its parent up to /raid1/sensnet_data/rms/
+        base_dir = os.path.join(*directory.rstrip('/').split('/')[:-3])
+        dir_path = os.path.join(base_dir, target_date)
+        if os.path.isdir(dir_path):
+            try:
+                shutil.rmtree(dir_path)
+                print(f"Deleted old directory: {dir_path}")
+            except Exception as e:
+                print(f"Failed to delete {dir_path}: {e}")
+    except Exception as e:
+        print(f"Error in delete_old_files: {e} for directory {directory}")
     
 def get_date(filename):
     # Find the date part in the path (expects /YYYYMMDD/ somewhere in the path)
