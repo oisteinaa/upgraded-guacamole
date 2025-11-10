@@ -78,6 +78,9 @@ def main(app, date="20251110", frame_interval=10):
         prevent_initial_call=True
     )
     def update_map(idx, data, is_playing, map_style):
+        print(f'Data length: {len(data) if data else 0}, is_playing: {is_playing}, idx: {idx}')
+        sys.stdout.flush()
+        
         if not is_playing or not data:
             fig = px.scatter_mapbox()
             fig.update_layout(mapbox_style=map_style)
