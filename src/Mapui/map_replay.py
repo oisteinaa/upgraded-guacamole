@@ -6,7 +6,7 @@ from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 import requests
 import datetime
-import sys, os, time
+import sys, os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from sensnetlib.dbfunc import get_mastliste
@@ -21,10 +21,22 @@ def main(app, date="20251110", frame_interval=10):
         html.Div([
             dcc.Graph(id="map-plot", style={'height': '90vh'}),
             html.Div(id="map-info", style={'margin-top': '10px', 'font-size': '18px'}),
-            html.Button("Start Replay", id="start-btn", n_clicks=0),
+
+            html.Div([
+                html.Button("▶ Start Replay", id="start-btn", n_clicks=0, style={'margin-right': '10px'}),
+                html.Button("⏸ Pause", id="pause-btn", n_clicks=0, style={'margin-right': '10px'}),
+                html.Button("⏵ Resume", id="resume-btn", n_clicks=0)
+            ], style={'margin-bottom': '10px'}),
+
             dcc.Store(id="rms-data", storage_type="memory"),
             dcc.Store(id="frame-index", storage_type="memory", data=0),
             dcc.Store(id="is-playing", storage_type="memory", data=False),
+            dcc.Interval(
+                id="play-interval",
+                interval=frame_interval * 1000,  # milliseconds
+                n_intervals=0,
+                disabled=True
+            ),
             dcc.RadioItems(
                 id="view-selector",
                 options=[
@@ -34,21 +46,16 @@ def main(app, date="20251110", frame_interval=10):
                 value='open-street-map',
                 inline=True,
                 style={'margin-top': '10px'}
-            ),
-            dcc.Interval(
-                id="play-interval",
-                interval=frame_interval * 1000,  # milliseconds
-                n_intervals=0,
-                disabled=True
             )
         ])
     ], style={'padding': '10px'})
 
-    # Load all data once
+    # --- 1. Load data and start playback ---
     @app.callback(
         Output("rms-data", "data"),
         Output("is-playing", "data"),
         Output("play-interval", "disabled"),
+        Output("frame-index", "data"),
         Input("start-btn", "n_clicks"),
         prevent_initial_call=True
     )
@@ -59,14 +66,35 @@ def main(app, date="20251110", frame_interval=10):
             data = resp.json()
             print(f"Loaded {len(data)} time slices from {url}")
             sys.stdout.flush()
-            # Start playback immediately after loading
-            return data, True, False
+            # Enable playback immediately and render the first frame
+            return data, True, False, 0
         except Exception as e:
             print("Error fetching data:", e)
             sys.stdout.flush()
-            return [], False, True
+            return [], False, True, 0
 
-    # Sequential update using dcc.Interval ticks
+    # --- 2. Pause and resume controls ---
+    @app.callback(
+        Output("play-interval", "disabled"),
+        Input("pause-btn", "n_clicks"),
+        Input("resume-btn", "n_clicks"),
+        State("play-interval", "disabled"),
+        prevent_initial_call=True
+    )
+    def toggle_pause(pause_clicks, resume_clicks, disabled):
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            raise dash.exceptions.PreventUpdate
+        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        if button_id == "pause-btn":
+            print("Paused playback")
+            return True
+        elif button_id == "resume-btn":
+            print("Resumed playback")
+            return False
+        raise dash.exceptions.PreventUpdate
+
+    # --- 3. Map update callback ---
     @app.callback(
         Output("map-plot", "figure"),
         Output("map-info", "children"),
@@ -79,7 +107,7 @@ def main(app, date="20251110", frame_interval=10):
         prevent_initial_call=True
     )
     def update_map(n_intervals, data, idx, is_playing, map_style):
-        print(f"update_map triggered: intervals={n_intervals}, idx={idx}, is_playing={is_playing}")
+        print(f"update_map triggered: n_intervals={n_intervals}, idx={idx}, is_playing={is_playing}")
         sys.stdout.flush()
 
         if not is_playing or not data:
