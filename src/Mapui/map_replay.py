@@ -16,7 +16,7 @@ from sensnetlib.dbfunc import get_mastliste
 BASE_URL = "http://127.0.0.1:5000"
 
 
-def main(app, date="20251110", frame_interval=1):
+def main(app, date="20251110", frame_interval=10):
     geom = get_mastliste()
 
     app.layout = html.Div([
@@ -37,7 +37,7 @@ def main(app, date="20251110", frame_interval=1):
                 id="play-interval",
                 interval=frame_interval * 1000,  # milliseconds
                 n_intervals=0,
-                disabled=True
+                disabled=False
             ),
             dcc.RadioItems(
                 id="view-selector",
