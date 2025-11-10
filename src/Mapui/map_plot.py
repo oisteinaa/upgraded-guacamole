@@ -154,6 +154,7 @@ def main(app, live_data=True):
     def update_graph_live(_, map_type, data_type):
         global geom
         
+        print(f'Update map: map_type={map_type}, data_type={data_type}')
         if data_type is None:
             data_type = 'rms'
         
