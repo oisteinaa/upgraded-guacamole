@@ -6,15 +6,13 @@ from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 import requests
 import datetime
-import time
-import dash
-from threading import Timer
-import sys, os
+import sys, os, time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from sensnetlib.dbfunc import get_mastliste
 
 BASE_URL = "http://127.0.0.1:5000"
+
 
 def main(app, date="20251110", frame_interval=10):
     geom = get_mastliste()
@@ -36,6 +34,12 @@ def main(app, date="20251110", frame_interval=10):
                 value='open-street-map',
                 inline=True,
                 style={'margin-top': '10px'}
+            ),
+            dcc.Interval(
+                id="play-interval",
+                interval=frame_interval * 1000,  # milliseconds
+                n_intervals=0,
+                disabled=True
             )
         ])
     ], style={'padding': '10px'})
@@ -43,6 +47,8 @@ def main(app, date="20251110", frame_interval=10):
     # Load all data once
     @app.callback(
         Output("rms-data", "data"),
+        Output("is-playing", "data"),
+        Output("play-interval", "disabled"),
         Input("start-btn", "n_clicks"),
         prevent_initial_call=True
     )
@@ -52,43 +58,36 @@ def main(app, date="20251110", frame_interval=10):
             resp = requests.get(url)
             data = resp.json()
             print(f"Loaded {len(data)} time slices from {url}")
-            return data
+            sys.stdout.flush()
+            # Start playback immediately after loading
+            return data, True, False
         except Exception as e:
             print("Error fetching data:", e)
-            return []
+            sys.stdout.flush()
+            return [], False, True
 
-    # Start playback
-    @app.callback(
-        Output("is-playing", "data"),
-        Input("rms-data", "data"),
-        prevent_initial_call=True
-    )
-    def start_playback(_):
-        print("Starting playback")
-        sys.stdout.flush()
-        return True
-
-    # Sequential rendering logic
+    # Sequential update using dcc.Interval ticks
     @app.callback(
         Output("map-plot", "figure"),
         Output("map-info", "children"),
         Output("frame-index", "data"),
-        Input("frame-index", "data"),
+        Input("play-interval", "n_intervals"),
         State("rms-data", "data"),
+        State("frame-index", "data"),
         State("is-playing", "data"),
         State("view-selector", "value"),
         prevent_initial_call=True
     )
-    def update_map(idx, data, is_playing, map_style):
-        print(f'Data length: {len(data) if data else 0}, is_playing: {is_playing}, idx: {idx}')
+    def update_map(n_intervals, data, idx, is_playing, map_style):
+        print(f"update_map triggered: intervals={n_intervals}, idx={idx}, is_playing={is_playing}")
         sys.stdout.flush()
-        
+
         if not is_playing or not data:
             fig = px.scatter_mapbox()
             fig.update_layout(mapbox_style=map_style)
             return fig, "Not playing", idx
 
-        idx = idx or 0
+        idx = (idx or 0) % len(data)
         rms_values = data[idx]
 
         geom['rms'] = rms_values
@@ -118,32 +117,16 @@ def main(app, date="20251110", frame_interval=10):
             title=f"RMS Replay – {timestamp.strftime('%Y-%m-%d %H:%M:%S')}",
             uirevision='map'
         )
-        info = f"Frame {idx+1}/{len(data)} – Time: {timestamp.strftime('%H:%M:%S')}"
 
-        # Schedule next frame render
+        info = f"Frame {idx+1}/{len(data)} – Time: {timestamp.strftime('%H:%M:%S')}"
         next_idx = (idx + 1) % len(data)
-        Timer(frame_interval, lambda: app.run_callback("frame-index.data", next_idx)).start()
 
         return fig, info, next_idx
 
     return app
 
 
-# Add a helper to allow scheduling callbacks (Monkeypatch Dash runtime)
-def patch_dash_for_timer(app):
-    ctx = dash.callback_context
-
-    def run_callback(prop_id, value):
-        # Force a property update (simulate frontend change)
-        app._callback_list.append((prop_id, value))
-        with app.server.test_request_context():
-            for cb in app.callback_map.values():
-                if cb["output"].component_property == prop_id.split(".")[1]:
-                    cb["callback"](value)
-    app.run_callback = run_callback
-
 if __name__ == "__main__":
     app = Dash(__name__)
-    patch_dash_for_timer(app)
     app = main(app)
     app.run_server(host='0.0.0.0', port=8050, debug=True)
