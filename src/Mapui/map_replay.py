@@ -16,7 +16,7 @@ from sensnetlib.dbfunc import get_mastliste
 BASE_URL = "http://127.0.0.1:5000"
 
 
-def main(app, date="20251110", frame_interval=10):
+def main(app, date="20251110", frame_interval=1):
     geom = get_mastliste()
 
     app.layout = html.Div([
@@ -76,28 +76,28 @@ def main(app, date="20251110", frame_interval=10):
             return [], False, True, 0
 
     # --- 2. Pause and resume controls ---
-    @app.callback(
-        Output("play-interval", "disabled"),
-        Input("pause-btn", "n_clicks"),
-        Input("resume-btn", "n_clicks"),
-        State("play-interval", "disabled"),
-        prevent_initial_call=True
-    )
-    def toggle_playback(pause_clicks, resume_clicks, start_clicks, disabled):
-        ctx = dash.callback_context
-        if not ctx.triggered:
-            raise dash.exceptions.PreventUpdate
-        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        if button_id == "pause-btn":
-            print("Paused playback")
-            return True
-        elif button_id == "resume-btn":
-            print("Resumed playback")
-            return False
-        elif button_id == "start-btn":
-            print("Started playback")
-            return False
-        raise dash.exceptions.PreventUpdate
+    # @app.callback(
+    #     Output("play-interval", "disabled"),
+    #     Input("pause-btn", "n_clicks"),
+    #     Input("resume-btn", "n_clicks"),
+    #     State("play-interval", "disabled"),
+    #     prevent_initial_call=True
+    # )
+    # def toggle_playback(pause_clicks, resume_clicks, start_clicks, disabled):
+    #     ctx = dash.callback_context
+    #     if not ctx.triggered:
+    #         raise dash.exceptions.PreventUpdate
+    #     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    #     if button_id == "pause-btn":
+    #         print("Paused playback")
+    #         return True
+    #     elif button_id == "resume-btn":
+    #         print("Resumed playback")
+    #         return False
+    #     elif button_id == "start-btn":
+    #         print("Started playback")
+    #         return False
+    #     raise dash.exceptions.PreventUpdate
 
     # --- 3. Map update callback ---
     @app.callback(
