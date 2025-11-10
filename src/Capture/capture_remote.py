@@ -101,10 +101,10 @@ if __name__ == "__main__":
 			sys.exit(0)
 
 	event_handler = Handler()
+	event_handler.hostname = hostname
+	event_handler.port = port
 	observer = watchdog.observers.Observer()
 	observer.schedule(event_handler, path=src_path, recursive=True)
-	observer.hostname = hostname
-	observer.port = port
 	observer.start()
 	try:
 		while True:
