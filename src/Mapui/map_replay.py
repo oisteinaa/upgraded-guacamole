@@ -36,9 +36,9 @@ def main(app, date="20251110", frame_interval=10):
                 html.Button("⏵ Resume", id="resume-btn", n_clicks=0)
             ], style={'margin-bottom': '10px'}),
 
-            dcc.Store(id="rms-data", storage_type="memory"),
+            # dcc.Store(id="rms-data", storage_type="memory"),
             dcc.Store(id="frame-index", storage_type="memory", data=0),
-            dcc.Store(id="is-playing", storage_type="memory", data=False),
+            dcc.Store(id="is-playing", storage_type="memory", data=True),
             dcc.Interval(
                 id="play-interval",
                 interval=frame_interval * 1000,  # milliseconds
@@ -59,30 +59,30 @@ def main(app, date="20251110", frame_interval=10):
     ], style={'padding': '10px'})
 
     # --- 1. Load data and start playback ---
-    @app.callback(
-        Output("rms-data", "data"),
-        Output("is-playing", "data"),
-        Output("play-interval", "disabled"),
-        Output("play-interval", "n_intervals"), 
-        Output("frame-index", "data"),
-        Input("start-btn", "n_clicks"),
-        State("play-interval", "n_intervals"),
-        State("play-interval", "disabled"),
-        prevent_initial_call=True
-    )
-    def load_rms_data(_, n_intervals, disabled):
-        url = f"{BASE_URL}/rms_history/{date}"
-        try:
-            resp = requests.get(url)
-            data = resp.json()
-            print(f"Loaded {len(data)} time slices from {url} n_intervals={n_intervals} disabled={disabled}")
-            sys.stdout.flush()
-            # Enable playback immediately and render the first frame
-            return data, True, False, n_intervals + 1, 0
-        except Exception as e:
-            print("Error fetching data:", e)
-            sys.stdout.flush()
-            return [], False, True, 0, 0
+    # @app.callback(
+    #     Output("rms-data", "data"),
+    #     Output("is-playing", "data"),
+    #     Output("play-interval", "disabled"),
+    #     Output("play-interval", "n_intervals"), 
+    #     Output("frame-index", "data"),
+    #     Input("start-btn", "n_clicks"),
+    #     State("play-interval", "n_intervals"),
+    #     State("play-interval", "disabled"),
+    #     prevent_initial_call=True
+    # )
+    # def load_rms_data(_, n_intervals, disabled):
+    #     url = f"{BASE_URL}/rms_history/{date}"
+    #     try:
+    #         resp = requests.get(url)
+    #         data = resp.json()
+    #         print(f"Loaded {len(data)} time slices from {url} n_intervals={n_intervals} disabled={disabled}")
+    #         sys.stdout.flush()
+    #         # Enable playback immediately and render the first frame
+    #         return data, True, False, n_intervals + 1, 0
+    #     except Exception as e:
+    #         print("Error fetching data:", e)
+    #         sys.stdout.flush()
+    #         return [], False, True, 0, 0
 
     # --- 2. Pause and resume controls ---
     # @app.callback(
