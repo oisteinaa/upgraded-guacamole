@@ -60,17 +60,18 @@ def main(app, date="20251110", frame_interval=1):
         Output("play-interval", "n_intervals"), 
         Output("frame-index", "data"),
         Input("start-btn", "n_clicks"),
+        State("play-interval", "n_intervals"),
         prevent_initial_call=True
     )
-    def load_rms_data(_):
+    def load_rms_data(_, n_intervals):
         url = f"{BASE_URL}/rms_history/{date}"
         try:
             resp = requests.get(url)
             data = resp.json()
-            print(f"Loaded {len(data)} time slices from {url}")
+            print(f"Loaded {len(data)} time slices from {url} n_intervals={n_intervals}")
             sys.stdout.flush()
             # Enable playback immediately and render the first frame
-            return data, True, False, 1, 0
+            return data, True, False, n_intervals + 1, 0
         except Exception as e:
             print("Error fetching data:", e)
             sys.stdout.flush()
