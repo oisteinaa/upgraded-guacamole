@@ -155,6 +155,7 @@ def main(app, live_data=True):
         global geom
         
         print(f'Update map: map_type={map_type}, data_type={data_type}')
+        sys.stdout.flush()
         if data_type is None:
             data_type = 'rms'
         
@@ -166,7 +167,8 @@ def main(app, live_data=True):
         geom['rms'] = geom['rms'].fillna(20)
         geom['size'] = geom['rms']
         geom['size'] = geom['size'].apply(lambda x: max(x, 40))
-        print(f'geom.shape: {geom.shape}')
+        print(f'geom.shape: {geom}')
+        sys.stdout.flush()
 
         if geom['rms'].shape[0] < 1:
             gdf = gpd.GeoDataFrame(geom, geometry=gpd.points_from_xy(geom['longitude'], geom['latitude']), crs="EPSG:4326")
