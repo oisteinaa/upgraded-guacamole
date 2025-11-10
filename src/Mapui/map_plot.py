@@ -165,7 +165,7 @@ def main(app, live_data=True):
         geom['rms'] = geom['rms'].fillna(20)
         geom['size'] = geom['rms']
         geom['size'] = geom['size'].apply(lambda x: max(x, 40))
-        #print(rmsdf)
+        print(f'geom.shape: {geom.shape}')
 
         if geom['rms'].shape[0] < 1:
             gdf = gpd.GeoDataFrame(geom, geometry=gpd.points_from_xy(geom['longitude'], geom['latitude']), crs="EPSG:4326")
