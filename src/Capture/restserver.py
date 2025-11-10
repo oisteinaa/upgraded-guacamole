@@ -29,7 +29,7 @@ def get_rms_history(date):
     for fname in files:
         with open(os.path.join(directory, fname), 'r') as f:
             data = json.load(f)
-            RMS.extend(data)
+            RMS.append(data)
             
     return jsonify(RMS)
 
