@@ -45,7 +45,10 @@ def compress_data(data, compression_level=22):
 def delete_old_files(directory, days=31):
     # Calculate the target date directory to delete
     try:
-        target_date = (datetime.strptime(os.path.basename(os.path.normpath(directory)), "%Y/%m/%d") - timedelta(days=days)).strftime("%Y/%m/%d")
+        # Extract the last three directories (year, month, day) from the path
+        parts = os.path.normpath(directory).split(os.sep)
+        year, month, day = parts[-3], parts[-2], parts[-1]
+        target_date = (datetime.strptime(f"{year}/{month}/{day}", "%Y/%m/%d") - timedelta(days=days)).strftime("%Y/%m/%d")
         # If directory is like /raid1/sensnet_data/rms/2025/09/23/, get its parent up to /raid1/sensnet_data/rms/
         base_dir = os.path.join(*directory.rstrip('/').split('/')[:-3])
         dir_path = os.path.join(base_dir, target_date)
