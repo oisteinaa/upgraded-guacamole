@@ -64,6 +64,8 @@ def main(app, date="20251110", frame_interval=10):
         prevent_initial_call=True
     )
     def start_playback(_):
+        print("Starting playback")
+        sys.stdout.flush()
         return True
 
     # Sequential rendering logic
