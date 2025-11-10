@@ -15,8 +15,14 @@ from sensnetlib.dbfunc import get_mastliste
 
 BASE_URL = "http://127.0.0.1:5000"
 
+url = f"{BASE_URL}/rms_history/{20251110}"
 
-def main(app, date="20251110", frame_interval=60):
+resp = requests.get(url)
+data = resp.json()
+print(f"Loaded {len(data)} time slices from {url}")
+sys.stdout.flush()
+
+def main(app, date="20251110", frame_interval=10):
     geom = get_mastliste()
 
     app.layout = html.Div([
@@ -108,13 +114,13 @@ def main(app, date="20251110", frame_interval=60):
         Output("map-info", "children"),
         Output("frame-index", "data", allow_duplicate=True),
         Input("play-interval", "n_intervals"),
-        State("rms-data", "data"),
+        # State("rms-data", "data"),
         State("frame-index", "data"),
         State("is-playing", "data"),
         State("view-selector", "value"),
         prevent_initial_call=True
     )
-    def update_map(n_intervals, data, idx, is_playing, map_style):
+    def update_map(n_intervals, idx, is_playing, map_style):
         print(f"update_map triggered: n_intervals={n_intervals}, idx={idx}, is_playing={is_playing}")
         sys.stdout.flush()
 
