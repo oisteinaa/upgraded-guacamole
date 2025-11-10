@@ -23,7 +23,7 @@ data = resp.json()
 print(f"Loaded {len(data)} time slices from {url}")
 sys.stdout.flush()
 
-def main(app, date="20251110", frame_interval=2):
+def main(app, date="20251110", frame_interval=0.7):
     geom = get_mastliste()
 
     app.layout = html.Div([
