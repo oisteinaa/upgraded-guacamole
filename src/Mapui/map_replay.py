@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+from flask import app
 import geopandas as gpd
 import pandas as pd
 import plotly.express as px
 from dash import Dash, dcc, html
+import dash
 from dash.dependencies import Input, Output, State
 import requests
 import datetime
@@ -98,7 +100,7 @@ def main(app, date="20251110", frame_interval=10):
     @app.callback(
         Output("map-plot", "figure"),
         Output("map-info", "children"),
-        Output("frame-index", "data"),
+        Output("frame-index", "data", allow_duplicate=True),
         Input("play-interval", "n_intervals"),
         State("rms-data", "data"),
         State("frame-index", "data"),
