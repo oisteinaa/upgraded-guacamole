@@ -57,6 +57,7 @@ def main(app, date="20251110", frame_interval=1):
         Output("rms-data", "data"),
         Output("is-playing", "data"),
         Output("play-interval", "disabled"),
+        Output("play-interval", "n_intervals"), 
         Output("frame-index", "data"),
         Input("start-btn", "n_clicks"),
         prevent_initial_call=True
@@ -69,11 +70,11 @@ def main(app, date="20251110", frame_interval=1):
             print(f"Loaded {len(data)} time slices from {url}")
             sys.stdout.flush()
             # Enable playback immediately and render the first frame
-            return data, True, False, 0
+            return data, True, False, 1, 0
         except Exception as e:
             print("Error fetching data:", e)
             sys.stdout.flush()
-            return [], False, True, 0
+            return [], False, True, 0, 0
 
     # --- 2. Pause and resume controls ---
     # @app.callback(
