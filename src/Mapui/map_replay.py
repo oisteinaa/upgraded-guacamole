@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from flask import app
 import geopandas as gpd
+import pandas as pd
 # Removed unused import
 import plotly.express as px
 from dash import Dash, dcc, html
@@ -132,8 +133,10 @@ def main(app, date="20251110", frame_interval=10):
         idx = (idx or 0) % len(data)
         rms_values = data[idx]
 
-        geom['rms'] = rms_values
-        geom['size'] = geom['rms'].apply(lambda x: max(x, 40))
+        geom['rms'] = pd.DataFrame(rms_values)
+        geom['rms'] = geom['rms'].fillna(20)
+        geom['size'] = geom['rms']
+        geom['size'] = geom['size'].apply(lambda x: max(x, 40))
 
         gdf = gpd.GeoDataFrame(
             geom,
