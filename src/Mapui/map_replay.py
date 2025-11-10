@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from flask import app
 import geopandas as gpd
-import pandas as pd
+# Removed unused import
 import plotly.express as px
 from dash import Dash, dcc, html
 import dash
@@ -83,7 +83,7 @@ def main(app, date="20251110", frame_interval=10):
         State("play-interval", "disabled"),
         prevent_initial_call=True
     )
-    def toggle_pause(pause_clicks, resume_clicks, disabled):
+    def toggle_playback(pause_clicks, resume_clicks, start_clicks, disabled):
         ctx = dash.callback_context
         if not ctx.triggered:
             raise dash.exceptions.PreventUpdate
@@ -93,6 +93,9 @@ def main(app, date="20251110", frame_interval=10):
             return True
         elif button_id == "resume-btn":
             print("Resumed playback")
+            return False
+        elif button_id == "start-btn":
+            print("Started playback")
             return False
         raise dash.exceptions.PreventUpdate
 
