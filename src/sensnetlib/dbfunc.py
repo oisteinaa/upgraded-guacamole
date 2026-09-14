@@ -65,6 +65,39 @@ def get_event_data():
     
     return df
 
+def get_event_data_extended(limit=200):
+    query = text("""
+    SELECT time, type, value, comment
+    FROM events ORDER BY time DESC LIMIT :limit;
+    """)
+
+    conn = get_db_conn()
+    df = pd.read_sql_query(query, conn, params={"limit": limit})
+    conn.close()
+
+    return df
+
+def get_event_locations(limit=200):
+    """
+    Approximate map location for recent events. event_detector.insert_event
+    stores the tripped segment's event_limits.name as events.comment, so we
+    join events -> event_limits (on name) -> masteliste (on gid, averaged)
+    to get a lat/long per event.
+    """
+    events_df = get_event_data_extended(limit=limit)
+    if events_df.empty:
+        events_df['latitude'] = pd.Series(dtype=float)
+        events_df['longitude'] = pd.Series(dtype=float)
+        return events_df
+
+    limits_df = get_event_limits()[['name', 'gid']].drop_duplicates()
+    mast_locations = get_mastliste().groupby('gid')[['latitude', 'longitude']].mean().reset_index()
+
+    merged = events_df.merge(limits_df, left_on='comment', right_on='name', how='left')
+    merged = merged.merge(mast_locations, on='gid', how='left')
+
+    return merged
+
 def insert_event(typeid, value, comment):
     query = """
     INSERT INTO events (type, value, comment)

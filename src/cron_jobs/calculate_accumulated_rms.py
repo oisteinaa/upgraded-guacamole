@@ -26,14 +26,21 @@ def process_data():
             try:
                 with open(fpath, 'r') as f:
                     data = json.load(f)
-                    if isinstance(data, list):
-                        for i, rms in enumerate(data):
-                            if len(sample_sums) <= i:
-                                sample_sums.append(0.0)
-                                sample_counts.append(0)
-                            if rms is not None:
-                                sample_sums[i] += rms
-                                sample_counts[i] += 1
+                    if isinstance(data, dict) and 'rms' in data:
+                        # Current format: {"time": <epoch seconds>, "rms": [...]}
+                        rms_values = data['rms']
+                    elif isinstance(data, list):
+                        # Legacy format: bare list of per-channel RMS values
+                        rms_values = data
+                    else:
+                        continue
+                    for i, rms in enumerate(rms_values):
+                        if len(sample_sums) <= i:
+                            sample_sums.append(0.0)
+                            sample_counts.append(0)
+                        if rms is not None:
+                            sample_sums[i] += rms
+                            sample_counts[i] += 1
             except Exception:
                 continue
         averages = []

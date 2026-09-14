@@ -24,14 +24,27 @@ def get_rms_history(date):
     day = date[6:8]
     directory = f'{DATA_PREFIX}/rms/{year}/{month}/{day}'
     files = sorted([f for f in os.listdir(directory) if f.endswith('.json')])
-    
-    RMS = []
+
+    frames = []
     for fname in files:
         with open(os.path.join(directory, fname), 'r') as f:
             data = json.load(f)
-            RMS.extend(data)
-            
-    return jsonify(RMS)
+            if isinstance(data, dict) and 'rms' in data:
+                # Current format: {"time": <epoch seconds>, "rms": [...]}
+                frames.append(data)
+            else:
+                # Legacy format: bare list of per-channel RMS values, no timestamp
+                frames.append({'time': None, 'rms': data})
+
+    return jsonify(frames)
+
+@app.route('/rms_baseline')
+def get_rms_baseline():
+    path = f'{DATA_PREFIX}/rms/averages/average_rms.json'
+    if not os.path.exists(path):
+        return jsonify({})
+    with open(path, 'r') as f:
+        return jsonify(json.load(f))
 
 @app.route('/rawdata')
 def get_data():
