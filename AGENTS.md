@@ -191,3 +191,61 @@ The migration is transactional and was successfully rerun. Verification via
 a valid class is accepted, and an invalid class fails foreign-key enforcement;
 all test writes were rolled back without consuming sequence IDs. Existing
 115,847 events remained unclassified.
+
+### Mast routes and spans (applied 2026-09-16)
+
+"Server" means `10.147.20.10`. After the earlier eight-table inspection above,
+`public.masts`, `public.mast_routes`, and `public.mast_spans` were added. See
+`docs/masts.md` for schema semantics, source provenance, queries and limitations.
+
+The four workbooks supplied in `/mnt/c/Users/user/Downloads/masts` populate 579
+masts: R06=188, R12=94, R13=101, R14=196. Original R06 IDs are preserved. Mast
+names repeat across routes; use `(route, mast)`, not mast name or `(lid, mast)`,
+as the human-readable identity. Route is distinct from DAS lid and channel gid.
+Coordinates are EPSG:4326, converted from inferred EPSG:32633. Nearest channels
+use the complete stored mapping with WGS84 ellipsoidal distances; the composite
+`(channel,lid)` foreign key is enforced. `source_file`, `source_sheet`,
+`source_row`, `source_sha256` and `object_number` preserve workbook provenance.
+
+There are 575 inferred within-route connections in `mast_spans`. The
+`v_mast_spans` view includes endpoint coordinates, channel IDs, matching
+distances, straight-line endpoint length, review notes and illustrative GeoJSON.
+R14 uses geographically checked descending channel order because numeric order
+misplaces lettered masts (notably M38A precedes M35). R13 lacks M38; its M37–M39
+connection is flagged. No missing masts or cross-route links were invented.
+Connections are inferred, not a verified physical-span inventory.
+
+Water belongs to spans. Seven `water_status='map_candidate'` connections were
+screened against Kartverket maps: R06 M11–M12, M12–M13, M19–M20, M44–M45,
+M86–M87, M177–M178; R12 M82–M83. Screening is non-exhaustive; all others remain
+`unknown`, not confirmed land. `installation` is separately `unknown` for all
+spans; do not infer submerged cable from a water crossing. `v_water_spans`
+selects candidates plus confirmed-water records. The view's `crosses_water`
+boolean remains NULL unless water/land classification is confirmed.
+
+R06 M184–M188 remain 17.5–498.5 m from endpoint channel 101899; R14 M1 is about
+30.1 m from channel 28464. Other imported masts are within 10 m. Touching spans
+carry review notes. Straight-line lengths are not actual cable lengths, and
+endpoint channel bounds do not establish continuous monitored fibre coverage.
+
+`migrations/003_mast_routes_spans.sql` was first dry-run with ROLLBACK, then
+committed. `migrations/verify_mast_routes_spans.sql` passed read checks and
+rolled-back constraint probes. The migration is once-only and refuses changed
+source mast snapshots; do not rerun it as an update/upsert. The offline generator
+is `scripts/prepare_mast_import.py`; audit CSVs are in `results/masts/`.
+
+### Distributed weather update (applied 2026-09-16)
+
+Migration `005_distributed_weather.sql` is applied on server `sensnetdb` and
+local `sensnetdb_local`. Supersedes the earlier two-location/no-humidity snapshot:
+17 forecast locations now capture temperature, wind speed, wind direction and
+relative humidity (`rhum`, type 4 on both installations). Fifteen new points use
+mast coordinates across R06/R12/R13/R14 at roughly 5 km spacing. See
+`docs/weather.md` for selection, exact mast identities and limitations.
+`weather_stations` adds `forecast_route`, `forecast_mast`, `selection_note`.
+`weather_obs` adds nullable timestamptz `source_time`, `forecast_updated_at`,
+`collected_at`; legacy rows remain NULL. New `time` values explicitly use Oslo
+collection wall time. New forecast records are deduplicated by location, type,
+valid time and issue time. These are MET/YR modeled forecasts, not measurements.
+Collector is deployed at the existing server path; hourly minute-13 cron remains.
+Local capture uses `scripts/capture_weather_local.sh` on demand.

@@ -1,85 +1,13 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
+"""The capture data service and map API now share one bounded-read service."""
 
-from flask import Flask, jsonify, request, Response
-import json
-import msgpack
-import numpy as np
-import os
 import sys
+from pathlib import Path
 
-app = Flask(__name__)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from src.Mapui.api import app
 
-RMS = {'rms': [], 'var': [], 'data': []}  
-DATA = None
-DATA_PREFIX = '/raid1/sensnet_data'
+if __name__ == "__main__":
+    import uvicorn
 
-@app.route('/rms')
-def get_rms():
-    return jsonify(RMS)
-
-@app.route('/rms_history/<date>')
-def get_rms_history(date):
-    year = date[0:4]
-    month = date[4:6]
-    day = date[6:8]
-    directory = f'{DATA_PREFIX}/rms/{year}/{month}/{day}'
-    files = sorted([f for f in os.listdir(directory) if f.endswith('.json')])
-
-    frames = []
-    for fname in files:
-        with open(os.path.join(directory, fname), 'r') as f:
-            data = json.load(f)
-            if isinstance(data, dict) and 'rms' in data:
-                # Current format: {"time": <epoch seconds>, "rms": [...]}
-                frames.append(data)
-            else:
-                # Legacy format: bare list of per-channel RMS values, no timestamp
-                frames.append({'time': None, 'rms': data})
-
-    return jsonify(frames)
-
-@app.route('/rms_baseline')
-def get_rms_baseline():
-    path = f'{DATA_PREFIX}/rms/averages/average_rms.json'
-    if not os.path.exists(path):
-        return jsonify({})
-    with open(path, 'r') as f:
-        return jsonify(json.load(f))
-
-@app.route('/rawdata')
-def get_data():
-    return Response(DATA, content_type='application/octet-stream')
-
-@app.route('/channel/<int:channel_id>', methods=['GET'])
-def get_channel_data(channel_id):
-    channel_id = int(int(channel_id)/4)    
-    buf = msgpack.unpackb(DATA, raw=False)
-    shape = buf['shape']
-    data = np.array(buf['data']).reshape(shape)
-    
-    
-    print('Shape', data.shape)  
-    
-    channel_data = {
-        'data': data[:, channel_id].tolist()
-    }
-    return jsonify(channel_data)
-    
-        
-@app.route('/rms', methods=['POST'])
-def add_rms():
-    global RMS
-    rms_json = request.get_json()
-    RMS = json.loads(rms_json)
-    return '', 204
-
-@app.route('/rawdata', methods=['POST'])
-def add_data():
-    global DATA
-    DATA = request.data
-
-    return '', 204
-
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    uvicorn.run(app, host="127.0.0.1", port=5000)

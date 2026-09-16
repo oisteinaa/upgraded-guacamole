@@ -1,0 +1,8 @@
+id,route,span_order,from_mast_id,to_mast_id,from_mast,to_mast,straight_length_m,connection_basis,connection_status,review_reason,water_status,water_source,installation
+11,R06,11,178,177,M11,M12,281.2514515607079,mast_number_order,inferred,,map_candidate,Kartverket Topografisk Norgeskart WMS; visual map screening 2026-09-16,unknown
+12,R06,12,177,176,M12,M13,189.60918041776205,mast_number_order,inferred,,map_candidate,Kartverket Topografisk Norgeskart WMS; visual map screening 2026-09-16,unknown
+19,R06,19,170,169,M19,M20,237.13027036385444,mast_number_order,inferred,,map_candidate,Kartverket Topografisk Norgeskart WMS; visual map screening 2026-09-16,unknown
+44,R06,44,145,144,M44,M45,2232.76875708022,mast_number_order,inferred,Long endpoint connection; actual cable path and placement unknown,map_candidate,Kartverket Topografisk Norgeskart WMS; visual map screening 2026-09-16,unknown
+86,R06,86,103,102,M86,M87,1919.7476206692793,mast_number_order,inferred,Long endpoint connection; actual cable path and placement unknown,map_candidate,Kartverket Topografisk Norgeskart WMS; visual map screening 2026-09-16,unknown
+177,R06,177,12,11,M177,M178,213.07822287294636,mast_number_order,inferred,,map_candidate,Kartverket Topografisk Norgeskart WMS; visual map screening 2026-09-16,unknown
+269,R12,82,270,271,M82,M83,318.6524579767346,mast_number_order,inferred,,map_candidate,Kartverket Topografisk Norgeskart WMS; visual map screening 2026-09-16,unknown

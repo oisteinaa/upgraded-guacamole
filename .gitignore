@@ -162,3 +162,10 @@ cython_debug/
 #.idea/
 *.hdf5
 src/weather/yr_cache.sqlite
+
+# Local investigation environment, copied database, recordings and build output
+.local/
+.venv-map/
+web/node_modules/
+web/dist/
+web/test-results/
