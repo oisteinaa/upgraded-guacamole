@@ -1,4 +1,14 @@
+export type EventLocation = {
+  lid: number; channel: number; channel_start: number; channel_end: number;
+  latitude: number; longitude: number; mapping: string;
+  lower_channel: number; upper_channel: number;
+  located_channels: number; total_channels: number; basis: string; note: string;
+  routes: string[];
+  spans: { span_id: number; route: string; from_mast: string; to_mast: string }[];
+  nearest_masts: { id: number; route: string; mast: string; distance_m: number }[];
+};
 export type EventRow = {
+  location?: EventLocation | null;
   id: number;
   time: string;
   type: number;
@@ -24,6 +34,7 @@ export type EventDetail = EventRow & {
   reviews: Review[];
   context: null | {
     recording_id: number;
+    source_linked?: boolean;
     alignment_verified: boolean;
     start_sample: number;
     stop_sample: number;
@@ -63,6 +74,12 @@ export type Recording = {
   processing: string;
 };
 export type Signal = {
+  truncated?: boolean;
+  requested_start?: number;
+  requested_end?: number;
+  stitch_note?: string;
+  source_files?: { recording_id: number; relative_path: string; start: number; end: number }[];
+  source_note?: string | null;
   recording_id: number;
   channel: number;
   unit: string;
@@ -151,6 +168,8 @@ export const metricNames: Record<MetricName, string> = {
 };
 export type Inspection = { rid: number; channel: number; frame: number };
 export type MetricFrame = {
+  acquisition_epoch: number;
+  time_verified: boolean;
   recording_id: number;
   lid: number;
   metric: MetricName;

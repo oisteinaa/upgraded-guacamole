@@ -4,6 +4,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 maplibregl.setWorkerUrl(workerUrl);
 import { basemapSource, basemapLayers } from "./basemap";
+import MapLegend from "./MapLegend";
+import WindOverlay from "./WindOverlay";
 import { Layers, Maximize, MapPin } from "lucide-react";
 import {
   metricNames,
@@ -39,7 +41,9 @@ export default function Map({
   metricData,
   scale,
   onChannel,
+  weatherMode = "investigate",
 }: {
+  weatherMode?: "live" | "investigate";
   geo: Geography | null;
   events: Collection;
   route: string;
@@ -57,6 +61,7 @@ export default function Map({
     [basemap, setBasemap] = useState(true),
     [masts, setMasts] = useState(true),
     [water, setWater] = useState(false),
+    [wind, setWind] = useState(false),
     [spansVisible, setSpansVisible] = useState(false),
     [displayCount, setDisplayCount] = useState(0),
     [error, setError] = useState("");
@@ -488,7 +493,8 @@ export default function Map({
           <MapPin size={16} />
         </button>
       </div>
-      <div className="map-legend">
+      <MapLegend storageKey={`sensnet-legend-${weatherMode}`}>
+        <label><input type="checkbox" checked={wind} onChange={e => setWind(e.target.checked)} /> Wind arrows</label>
         <div>
           {["R06", "R12", "R13", "R14"].map((r, i) => (
             <span key={r}>
@@ -525,7 +531,8 @@ export default function Map({
           />{" "}
           Water crossing candidates
         </label>
-      </div>
+        {ready && wind && map.current && <WindOverlay map={map.current} mode={weatherMode} metricData={metricData} />}
+      </MapLegend>
       {error && <div className="map-warning">{error}</div>}
     </section>
   );

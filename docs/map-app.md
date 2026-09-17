@@ -192,6 +192,55 @@ be supplied in a rule only after verification; it is not inferred from gid names
 
 ## Configuration and deployment boundary
 
+### Server alongside legacy
+
+The server checkout is `/home/inst/oistein/upgraded-guacamole`. Legacy runs
+from `/home/inst/upgraded-guacamole` on port 8050. Use the separate
+`sensnet_observatory` service for the new app on port 8051; do not replace the
+installed `sensnet_app`, capture or dataserver configurations.
+
+Create `.venv-map` and install `requirements-map.txt` in the new checkout, then
+build `web/dist` as above (or copy a build from the same source revision).
+The server database requires `migrations/004_investigation.sql`; obtain approval
+before applying this additive schema migration. The launcher checks for its
+tables and reports missing prerequisites before opening the port.
+
+Run `bash scripts/run_map_server.sh` for foreground operation. It serves on
+`0.0.0.0:8051`, reads `sensnetdb` and `/home/inst/DataCopy`, and disables review
+writes by default. Optional overrides go in `.local/map-server.env` using shell
+assignment syntax. This launcher does not start capture, index recordings or
+apply migrations. The recording browser stays empty until files are indexed.
+
+The server deployment uses the independent systemd **user** service
+`sensnet-observatory.service`, with linger enabled for `inst` so it starts at
+boot and survives logout. Migration 004 was applied on 2026-09-16; the overview
+API and both dashboard ports returned successfully. Manage it as `inst`:
+
+```bash
+systemctl --user status sensnet-observatory
+systemctl --user restart sensnet-observatory
+journalctl --user -u sensnet-observatory -n 100
+```
+
+The unit source is `deploy/sensnet-observatory.service`, installed at
+`~/.config/systemd/user/sensnet-observatory.service`.
+
+Alternatively, use Supervisor instead of the user service (stop and disable the
+user service first to avoid a port collision). Install **only** the new configuration:
+
+```bash
+sudo cp supervisord/conf.d/sensnet_observatory.conf /etc/supervisor/conf.d/
+sudo supervisorctl reread
+sudo supervisorctl update sensnet_observatory
+sudo supervisorctl status sensnet_observatory
+```
+
+Open `http://10.147.20.10:8051`. Logs are written to
+`/home/inst/LOGS/sensnet_observatory.log`. Stop just the new app with
+`sudo supervisorctl stop sensnet_observatory`. Do not restart all Supervisor
+services. Authentication is not supplied; review writes remain disabled for
+this shared-server configuration.
+
 - `DAS_DATABASE_URL`: PostgreSQL DSN; defaults only to the local copy.
 - `DAS_ARCHIVE_ROOT`: trusted root for indexed HDF5 paths.
 - `DAS_LIVE_SNAPSHOT`: shared atomic capture snapshot path.
@@ -262,3 +311,90 @@ not verification that the recording covers that geographic span. Spans remain
 inferred connections, and endpoint bounds do not establish continuous monitored coverage.
 Large reads are limited to 50 million values; shorten the time window or channel range
 if the limit is exceeded.
+
+### Event map visibility (deployed 2026-09-17)
+
+The Signal layer sidebar includes Events controls: show/hide markers, latest
+recorded day, last hour/24 hours/7 days, all dates or a custom Oslo wall-time
+range; reviewed/unreviewed status; and independently selectable event classes.
+The demonstration defaults to **Latest recorded day**, using the database's
+latest event date. For live operation select **Last 24 hours**. Rolling ranges
+refresh every minute and use server time. Custom end times are exclusive.
+Filters apply before the map's 5,000-marker limit; zoomed-out clustering remains.
+
+Map filters do not remove queue entries. The queue retains its own date/class/
+review/search controls, while route selection applies to both views. Selecting
+an event reveals its location in the separate selection overlay even outside
+map filters or with markers hidden. Close selection to remove that override.
+Settings currently reset to the demonstration default on page reload. Review
+saving remains enabled in the server's `.local/map-server.env` for the demo.
+
+### Cross-file signal windows (deployed 2026-09-17)
+
+Both Event window and Recording browser now join consecutive indexed HDF5 files
+for the requested interval. Archive windows support up to 600 seconds; event
+context supports up to 120 seconds before and after the complete candidate.
+The time axis remains relative to the selected anchor recording, so preceding
+context can have negative seconds. Discovery event bounds include the complete
+multi-file candidate rather than only its longest constituent file slice.
+
+Joining requires matching sampling interval, scale, channel IDs/order, units,
+instrument ID, processing and available acquisition configuration headers.
+Boundary timestamp discrepancies up to one sample are treated as rounding.
+Larger gaps/overlaps, configuration changes, changed files or missing-sample
+metadata stop continuation. No interpolation or zero filling is performed.
+The panel reports the number of files used and whether the requested window
+was limited. Waveform, spectrum, heatmap and fixed analysis-frame statistics
+use the joined sample sequence; display reduction does not feed the spectrum.
+Existing sample/channel read budgets remain enforced.
+
+### Recording playback (deployed 2026-09-17)
+
+The signal-panel Play button advances through indexed recordings in acquisition
+order, holding each loaded file for two seconds and waiting for signal and map
+requests before proceeding. Starting from an event switches to its source
+recording in archive mode. Playback retains the channel, stops at the archive
+end or a signal-read error, and Pause retains the current recording. This is
+file-by-file browsing, not real-time acquisition-speed replay; the timeline
+slider remains available for inspecting a position within a file/window.
+
+Map signal updates retain the previous data until the replacement arrives;
+loading is indicated in the map footer. The previous fibre geometry likewise
+remains visible while replacement geometry loads. A failed request keeps the
+last successful layer and exposes the request error in Signal layer controls.
+
+### Separate Live monitor workspace (deployed 2026-09-17)
+
+Live monitor now has a dedicated full-width network map and capture-status
+panel. It has no event queue, historical markers, event review, recording
+selector, playback, or archive signal controls. Investigation requests and
+playback stop when switching modes; investigation controls return on switching
+back. Live polling is automatic, with no archive-replay fallback.
+
+Only a fresh snapshot with API status `live` can supply the live signal layer.
+Replay, offline, unverified-time, connection-error and stale states display
+explicit status and remove the signal overlay, retaining static network assets
+for orientation. Live AC RMS uses the published recording/frame, independently
+of the investigation selection. The previous live frame may remain during a
+replacement read, but only while its acquisition age is within 30 seconds.
+At deployment the server `/api/live` reports offline: no capture published.
+
+
+### Optional wind arrows
+
+Enable **Wind arrows** in the map legend to show MET/YR wind forecasts at each
+weather station. Live uses the latest forecast; Investigate uses the displayed
+recording frame’s acquisition time. Arrows point in the direction the wind
+blows (opposite the meteorological “from” bearing). Nonzero winds use an 18-pixel minimum for legibility, increasing linearly to
+72 screen pixels at 30 m/s and remaining capped above 30 m/s. Colors are
+green through 8 m/s, yellow above 8 through 18 m/s, and red above 18 m/s.
+Calm or missing wind has only a station dot; hover for values and forecast time.
+Forecasts older than two hours, or with unverified legacy times, have dashed station dots.
+The overlay refreshes every minute while enabled and immediately when new signal
+data loads. Historical queries exclude future valid/issue times and require a
+weather value within the preceding two hours. Unverified recording times are
+explicitly marked as provisional. Event filters do not change the weather time.
+Drag the **Map legend** header to reposition the controls and wind key together;
+positions are remembered separately for Live and Investigate. Keyboard users can
+focus the header and use arrow keys to move it, or Home to reset its position. Speed and direction are paired by station, collection
+time, forecast valid time and issue time via the read-only /api/map/wind endpoint.

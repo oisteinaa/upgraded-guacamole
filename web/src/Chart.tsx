@@ -11,12 +11,15 @@ export default function Chart({
   onZoom?: (a: number, b: number) => void;
 }) {
   const el = useRef<HTMLDivElement>(null);
+  const pending = useRef<Promise<unknown>>(Promise.resolve());
   const callback = useRef(onZoom);
   callback.current = onZoom;
   useEffect(() => {
     const node = el.current!;
     let active = true;
-    Plotly.react(
+    pending.current = pending.current.then(() => {
+      if (!active) return;
+      return Plotly.react(
       node,
       data,
       {
@@ -58,19 +61,25 @@ export default function Chart({
           );
       });
     });
+    });
     return () => {
       active = false;
     };
   }, [data, layout]);
   useEffect(() => {
     const node = el.current!;
+    let mounted = true;
     const obs = new ResizeObserver(() => {
-      if (node.offsetWidth) Plotly.Plots.resize(node);
+      pending.current = pending.current.then(() => {
+        if (mounted && node.offsetWidth && node.classList.contains("js-plotly-plot"))
+          return Plotly.Plots.resize(node);
+      });
     });
     obs.observe(node);
     return () => {
+      mounted = false;
       obs.disconnect();
-      Plotly.purge(node);
+      pending.current = pending.current.then(() => Plotly.purge(node));
     };
   }, []);
   return <div className="chart" ref={el} />;

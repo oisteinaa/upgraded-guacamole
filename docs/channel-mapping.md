@@ -28,3 +28,22 @@ The local audit is `.local/channel-mapping-audit.json`; API and unit tests cover
 these counts, provenance, rejected gaps and absent origin evidence. The database
 mapping remains unchanged. Mast-span straight lines are never substituted for
 fibre geometry, and event-limit group names are not used as geographic evidence.
+
+Discovery candidates in the event queue now use their validated source channel
+blocks for geographic display independently of clock verification. With a single
+configured DAS line and no recording lid, this requires the header ROI origin
+checks above; multiple configured lines require an explicit recording lid.
+The map marker represents the middle mapped channel of the sampled block, not
+a pinpointed incident. Exact or interpolated coordinates and interpolation
+neighbours remain visible. Span matches use mapped channels within same-line
+mast endpoint bounds; inferred span status is unchanged. Nearby masts are ranked
+by straight-line geographic distance to the marker and are not asserted to be
+its span endpoints. If no inventory span covers the channels, the GUI explicitly
+says so while still showing fibre coordinates and nearest masts. No time,
+alignment, class or historical mapping verification flags are changed.
+
+Server candidate #115850 maps header channel 69832 between stored channels
+69831 and 69835, near 68.14999 N, 13.62147 E. No imported span covers this block;
+nearest inventory masts are R14 M197 (~969 m) and R06 M1 (~997 m). Do not invent
+a connection between those routes. All five server candidates now have map
+markers; route filters include candidates whose blocks intersect inventory spans.

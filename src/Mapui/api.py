@@ -1,9 +1,12 @@
 """Investigation API: bounded reads, explicit provenance, atomic audited reviews."""
 
 import logging
+import json
 import os
 from datetime import datetime, timedelta
 from typing import Literal
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import psycopg2
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -13,7 +16,8 @@ from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.gzip import GZipMiddleware
 
 from .db import ROOT, database, rows
-from .signals import read_signal
+from .signals import archive_root, read_signal
+from .stitched_signals import read_stitched_signal
 
 app = FastAPI(title="Sensnet Cable Observatory", version="1.0.0")
 app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=3)
@@ -92,7 +96,7 @@ def event_filter(start, end, classid, route, review, search):
         clauses.append("e.classid=%s")
         args.append(classid)
     if route:
-        clauses.append("ctx.route=%s AND ctx.alignment_verified")
+        clauses.append("((ctx.route=%s AND ctx.alignment_verified) OR ctx.evidence LIKE 'discovery-window:%%')")
         args.append(route)
     if review in ("reviewed", "unreviewed"):
         clauses.append(
@@ -130,6 +134,11 @@ def events(
     if start and end and end <= start:
         raise HTTPException(422, "End must be after start")
     where, args = event_filter(start, end, classid, route, review, search)
+    if route:
+        items = rows("SELECT " + EVENT_COLUMNS + " " + EVENT_JOIN + " WHERE " + where +
+                     " ORDER BY e.time DESC,e.id DESC", args)
+        items = [item for item in add_source_locations(items) if matches_route(item, route)]
+        return {"items": items[offset:offset + limit], "total": len(items), "offset": offset, "limit": limit}
     with database() as cur:
         cur.execute("SELECT count(*) AS n " + EVENT_JOIN + " WHERE " + where, args)
         total = cur.fetchone()["n"]
@@ -144,7 +153,69 @@ def events(
             args + [limit, offset],
         )
         items = list(cur.fetchall())
+    add_source_locations(items)
     return {"items": items, "total": total, "offset": offset, "limit": limit}
+
+
+def discovery_source(ctx, rec):
+    """Validate file/sample provenance independently of geographic/clock alignment."""
+    try:
+        evidence = ctx["evidence"]
+        if not evidence.startswith("discovery-window:"):
+            return None
+        marker, _, payload = evidence.split("\n", 2)
+        row = json.loads(payload)
+        if marker != "discovery-window:" + row["window_id"]:
+            return None
+        lo, hi = int(row["channel_start"]), int(row["channel_stop"])
+        channels = json.loads(row["channel_ids"])
+        if not (0 <= lo < hi <= len(rec["channels"])) or rec["channels"][lo:hi] != channels:
+            return None
+        for ref in json.loads(row["refs"]):
+            if (archive_root() / rec["relative_path"]).resolve() != Path(ref["path"]).resolve():
+                continue
+            if ref["stamp"] != [rec["size_bytes"], rec["mtime_ns"]]:
+                continue
+            if not (ref["start_sample"] == ctx["start_sample"] and
+                    ref["stop_sample"] == ctx["stop_sample"] and
+                    0 <= ctx["start_sample"] < ctx["stop_sample"] <= rec["samples"]):
+                continue
+            return channels
+    except (KeyError, ValueError, TypeError, IndexError):
+        pass
+    return None
+
+
+def matches_route(item, route):
+    return (item.get("alignment_verified") and item.get("route") == route) or route in (item.get("location") or {}).get("routes", [])
+
+
+def add_source_locations(items):
+    from .event_geography import locate_source
+    if not items:
+        return items
+    contexts = {c["event_id"]: c for c in rows(
+        "SELECT * FROM event_context WHERE event_id=ANY(%s) AND evidence LIKE 'discovery-window:%%'",
+        ([item["id"] for item in items],))}
+    cache, recordings = {}, {}
+    for item in items:
+        ctx = contexts.get(item["id"])
+        if not ctx or not ctx["recording_id"]:
+            continue
+        try:
+            rid = ctx["recording_id"]
+            if rid not in recordings:
+                recordings[rid] = get_recording(rid)
+            rec = recordings[rid]
+            channels = discovery_source(ctx, rec)
+            if channels:
+                item["location"] = locate_source(rec, channels, cache)
+                if item["location"]:
+                    item["channel"] = item["location"]["channel"]
+                    item["lid"] = item["location"]["lid"]
+        except (ValueError, OSError, KeyError):
+            item["location"] = None
+    return items
 
 
 @app.get("/api/events/{event_id}")
@@ -163,6 +234,12 @@ def event_detail(event_id: int):
     )
     context = rows("SELECT * FROM event_context WHERE event_id=%s", (event_id,))
     item["context"] = context[0] if context else None
+    ctx = item["context"]
+    if ctx:
+        ctx["source_linked"] = bool(ctx["alignment_verified"])
+        if not ctx["source_linked"] and ctx["recording_id"]:
+            ctx["source_linked"] = discovery_source(ctx, get_recording(ctx["recording_id"])) is not None
+    add_source_locations([item])
     return item
 
 
@@ -257,6 +334,27 @@ def map_data():
     }
 
 
+def map_event_window(window, start, end, now=None, latest=None):
+    """Return Oslo wall-time bounds matching the stored event timestamp convention."""
+    if window == "custom":
+        if start is None or end is None:
+            raise HTTPException(422, "Custom map range requires start and end")
+        return start, end
+    if window == "all":
+        return start, end
+    if window == "latest_day":
+        if latest is None:
+            return None, None
+        day = latest.replace(hour=0, minute=0, second=0, microsecond=0)
+        return day, day + timedelta(days=1)
+    now = now or datetime.now(ZoneInfo("Europe/Oslo"))
+    from datetime import timezone
+    duration = {"hour": timedelta(hours=1), "day": timedelta(days=1), "week": timedelta(days=7)}[window]
+    # Subtract elapsed time in UTC before converting back to stored Oslo wall time.
+    before = (now.astimezone(timezone.utc) - duration).astimezone(ZoneInfo("Europe/Oslo"))
+    return before.replace(tzinfo=None), now.astimezone(ZoneInfo("Europe/Oslo")).replace(tzinfo=None)
+
+
 @app.get("/api/map/events")
 def event_locations(
     start: datetime | None = None,
@@ -265,14 +363,27 @@ def event_locations(
     route: str | None = None,
     review: Literal["all", "reviewed", "unreviewed"] = "all",
     search: str = Query("", max_length=100),
+    window: Literal["all", "hour", "day", "week", "latest_day", "custom"] = "all",
+    classes: str | None = Query(None, max_length=200),
 ):
     if any(d and d.tzinfo for d in (start, end)):
         raise HTTPException(
             422, "Legacy filters require stored timestamps without timezone offsets"
         )
+    latest = rows("SELECT max(time) AS latest FROM events")[0]["latest"] if window == "latest_day" else None
+    start, end = map_event_window(window, start, end, latest=latest)
     if start and end and end <= start:
         raise HTTPException(422, "End must be after start")
     where, args = event_filter(start, end, classid, route, review, search)
+    if classes is not None:
+        try:
+            ids = [int(value) for value in classes.split(",") if value]
+            if any(value < 0 or value > 32767 for value in ids):
+                raise ValueError()
+        except ValueError:
+            raise HTTPException(422, "Invalid map event classes")
+        where += " AND COALESCE(e.classid,0)=ANY(%s)"
+        args.append(ids)
     items = rows(
         "SELECT "
         + EVENT_COLUMNS
@@ -285,6 +396,15 @@ def event_locations(
         + " ORDER BY e.time DESC,e.id DESC LIMIT 5000",
         args,
     )
+    candidates = rows("SELECT " + EVENT_COLUMNS + " " + EVENT_JOIN +
+                      " WHERE ctx.evidence LIKE 'discovery-window:%%' AND " + where +
+                      " ORDER BY e.time DESC,e.id DESC LIMIT 5000", args)
+    known = {item["id"] for item in items}
+    for candidate in add_source_locations(candidates):
+        location = candidate.get("location")
+        if location and candidate["id"] not in known and (not route or matches_route(candidate, route)):
+            items.append(dict(candidate, latitude=location["latitude"], longitude=location["longitude"]))
+    items = sorted(items, key=lambda item: (item["time"], item["id"]), reverse=True)[:5000]
     return {
         "data": collection(
             [
@@ -301,6 +421,8 @@ def event_locations(
             ]
         ),
         "limit": 5000,
+        "window_start": start,
+        "window_end": end,
     }
 
 
@@ -387,7 +509,7 @@ def signal(
             bounds = sorted([span["from_channel"], span["to_channel"]])
             channel = sum(bounds) / 2
             channel_count = None
-        return read_signal(
+        return read_stitched_signal(
             rec, channel, start, duration, points,
             channel_count=channel_count, channel_bounds=bounds,
         )
@@ -404,32 +526,72 @@ def event_signal(
 ):
     detail = event_detail(event_id)
     ctx = detail["context"]
-    if not ctx or not ctx["alignment_verified"]:
-        raise HTTPException(
-            404, "No verified recording alignment exists for this event"
-        )
+    if not ctx or not ctx.get("source_linked"):
+        raise HTTPException(404, "No validated recording source exists for this event")
     rec = get_recording(ctx["recording_id"])
-    if (
+    channels = discovery_source(ctx, rec) if not ctx["alignment_verified"] else None
+    if not ctx["alignment_verified"] and channels is None:
+        raise HTTPException(422, "Recording source no longer matches candidate provenance")
+    if ctx["alignment_verified"] and (
         not rec["time_verified"]
         or not rec["mapping_verified"]
         or rec["lid"] != ctx["lid"]
     ):
         raise HTTPException(422, "Recording time or channel mapping is not verified")
-    start = max(0, ctx["start_sample"] * rec["dt"] - before)
-    end = min(rec["samples"] * rec["dt"], ctx["stop_sample"] * rec["dt"] + after)
+    event_start = ctx["start_sample"] * rec["dt"]
+    event_end = ctx["stop_sample"] * rec["dt"]
+    if channels:
+        provenance = json.loads(ctx["evidence"].split("\n", 2)[2])
+        event_start = float(provenance["start_epoch"]) - rec["acquisition_epoch"]
+        event_end = event_start + float(provenance["duration_seconds"])
+    start = event_start - before
+    end = event_end + after
     if ctx["stop_sample"] > rec["samples"] or end - start > 600:
-        raise HTTPException(
-            422, "Event window is invalid or too large; open recording directly"
-        )
+        raise HTTPException(422, "Event window is invalid or too large")
     try:
-        result = read_signal(rec, ctx["channel"], start, end - start, points)
+        result = read_stitched_signal(rec, channels[len(channels) // 2] if channels else ctx["channel"],
+                             start, end - start, points,
+                             channel_bounds=[min(channels), max(channels)] if channels else None)
     except (ValueError, OSError, KeyError) as exc:
         raise HTTPException(422, str(exc)) from exc
     result.update(
-        event_start=ctx["start_sample"] * rec["dt"],
-        event_end=ctx["stop_sample"] * rec["dt"],
+        source_note=("Full candidate window with available adjoining recordings. Recording time remains unverified; location uses the current channel mapping when available." if channels else None),
+        event_start=event_start,
+        event_end=event_end,
     )
     return result
+
+
+@app.get("/api/map/wind")
+def map_wind(at: float | None = Query(None, ge=0, le=253402300799, allow_inf_nan=False)):
+    """Match a wind pair to the requested UTC epoch, without future weather."""
+    target = datetime.fromtimestamp(at, ZoneInfo("UTC")) if at is not None else datetime.now(ZoneInfo("UTC"))
+    return {"at": target, "stations": rows("""
+        SELECT s.lid,s.name,s.latitude,s.longitude,
+               w.speed,w.direction,w.source_time,w.time,
+               (w.source_time < %s - interval '2 hours'
+                OR w.source_time IS NULL) AS stale
+        FROM weather_stations s
+        LEFT JOIN LATERAL (
+            SELECT a.value AS speed,d.value AS direction,a.source_time,a.time
+            FROM weather_obs a
+            JOIN weather_obs_types t ON t.type=a.type AND t.abv='wspd'
+            LEFT JOIN weather_obs d ON d.lid=a.lid
+                AND d.type=(SELECT type FROM weather_obs_types WHERE abv='wdir')
+                AND d.source_time IS NOT DISTINCT FROM a.source_time
+                AND d.forecast_updated_at IS NOT DISTINCT FROM a.forecast_updated_at
+                AND d.time=a.time
+            WHERE a.lid=s.lid
+              AND coalesce(a.source_time,a.time AT TIME ZONE 'Europe/Oslo') <= %s
+              AND (a.forecast_updated_at IS NULL OR a.forecast_updated_at <= %s)
+              AND (%s IS NULL OR
+                   coalesce(a.source_time,a.time AT TIME ZONE 'Europe/Oslo') >= %s - interval '2 hours')
+            ORDER BY coalesce(a.source_time,a.time AT TIME ZONE 'Europe/Oslo') DESC,
+                     a.forecast_updated_at DESC NULLS LAST,a.id DESC LIMIT 1
+        ) w ON true
+        WHERE s.latitude IS NOT NULL AND s.longitude IS NOT NULL
+        ORDER BY s.lid
+    """, (target, target, target, at, target))} 
 
 
 @app.get("/api/weather")

@@ -42,6 +42,7 @@ export default function SignalPanel({
   event,
   overview,
   requestedRecording,
+  mapLoading,
   inspection,
   onInspection,
 }: {
@@ -52,6 +53,7 @@ export default function SignalPanel({
   event: EventDetail | null;
   overview: Overview | null;
   requestedRecording: number | null;
+  mapLoading: boolean;
   inspection: Inspection;
   onInspection: (i: Inspection) => void;
 }) {
@@ -115,7 +117,7 @@ export default function SignalPanel({
     setSignal(null);
     setError("");
     setBusy(false);
-    if (source === "event" && !event?.context?.alignment_verified) return;
+    if (source === "event" && !event?.context?.source_linked) return;
     if (source === "archive" && !rid) return;
     setBusy(true);
     const url =
@@ -128,10 +130,10 @@ export default function SignalPanel({
         setCursor(d.start);
         const eventRec = recordings.find((r) => r.id === d.recording_id);
         if (source === "event" && eventRec) {
-          const frame = Math.floor(
+          const frame = Math.max(0, Math.floor(
             (d.event_start ?? d.start) /
               (Math.round(10 / eventRec.dt) * eventRec.dt),
-          );
+          ));
           if (d.recording_id !== rid || frame !== inspection.frame)
             onInspection({ rid: d.recording_id, channel: d.channel, frame });
         }
@@ -171,40 +173,28 @@ export default function SignalPanel({
     return () => abort.abort();
   }, [open, tab, station, event?.id]);
   useEffect(() => {
-    if (!open || !playing || !signal) return;
-    const timer = setInterval(
-      () => setCursor((c) => Math.min(signal.end, c + 0.1)),
-      100,
-    );
-    return () => clearInterval(timer);
-  }, [open, playing, signal]);
+    if (!open || !playing || busy || mapLoading || !signal) return;
+    // Hold each loaded recording briefly, then advance. Never skip files while loading.
+    const timer = setTimeout(() => {
+      const chronological = [...recordings].sort(
+        (a, b) => a.acquisition_epoch - b.acquisition_epoch || a.id - b.id,
+      );
+      const next = chronological[chronological.findIndex(r => r.id === rid) + 1];
+      if (!next) {
+        setPlaying(false);
+        return;
+      }
+      setSource("archive");
+      setView(null);
+      setStart(0);
+      setDuration(Math.round(10 / next.dt) * next.dt);
+      onInspection({ rid: next.id, channel, frame: 0 });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [open, playing, busy, mapLoading, signal, recordings, rid, channel]);
   useEffect(() => {
-    if (!playing || !signal || cursor < signal.end) return;
-    if (
-      view?.key === selectionKey &&
-      (windowStart !== inspection.frame * frameWidth ||
-        windowDuration !== frameWidth)
-    ) {
-      setPlaying(false);
-      return;
-    }
-    if (source !== "archive") {
-      setPlaying(false);
-      return;
-    }
-    const frames = rec ? Math.ceil(rec.samples / Math.round(10 / rec.dt)) : 1;
-    if (inspection.frame + 1 < frames) {
-      onInspection({ ...inspection, frame: inspection.frame + 1 });
-      return;
-    }
-    const chronological = [...recordings].sort(
-      (a, b) => a.acquisition_epoch - b.acquisition_epoch,
-    );
-    const next =
-      chronological[chronological.findIndex((r) => r.id === rid) + 1];
-    if (next) onInspection({ rid: next.id, channel, frame: 0 });
-    else setPlaying(false);
-  }, [cursor, playing, signal]);
+    if (error) setPlaying(false);
+  }, [error]);
   function chooseRecording(value: number) {
     const r = recordings.find((v) => v.id === value);
     onInspection({ rid: value, channel: r?.first_channel ?? 0, frame: 0 });
@@ -216,7 +206,7 @@ export default function SignalPanel({
   function zoom(a: number, b: number) {
     if (source !== "archive" || !rec || b <= a) return;
     const first = Math.max(0, a),
-      last = Math.min(rec.samples * rec.dt, b);
+      last = Math.min(signal?.end ?? rec.samples * rec.dt, b);
     if (last - first < 8 * rec.dt) return;
     setStart(first);
     setDuration(Math.min(600, last - first));
@@ -398,7 +388,7 @@ export default function SignalPanel({
                   className="secondary"
                   onClick={() => {
                     setPlaying(false);
-                    const frame = Math.max(0, Math.floor(start / frameWidth));
+                    const frame = Math.max(0, Math.min(Math.ceil((rec?.samples ?? 1) * (rec?.dt ?? 1) / frameWidth) - 1, Math.floor(start / frameWidth)));
                     onInspection({ ...inspection, frame });
                     setView({ key: `${rid}:${frame}`, start, duration });
                     setRevision((n) => n + 1);
@@ -457,6 +447,18 @@ export default function SignalPanel({
           {error && (
             <div role="alert" className="inline-error">
               {error}
+            </div>
+          )}
+          {signal?.truncated && !busy && tab !== "weather" && (
+            <div className="notice" role="status" aria-label="Recording coverage limit">
+              <div>
+                <strong>Requested window exceeds available continuous recordings.</strong>
+                {source === "event" && signal.event_start != null && signal.event_end != null ? (
+                  <div>Before: {before} s requested, {Math.max(0, signal.event_start - signal.start).toFixed(2)} s available.
+                    {" "}After: {after} s requested, {Math.max(0, signal.end - signal.event_end).toFixed(2)} s available.</div>
+                ) : <div>Showing {(signal.end - signal.start).toFixed(2)} s of the requested {((signal.requested_end ?? signal.end) - (signal.requested_start ?? signal.start)).toFixed(2)} s.</div>}
+                <div>{signal.stitch_note}</div>
+              </div>
             </div>
           )}
           {tab === "weather" ? (
@@ -523,6 +525,8 @@ export default function SignalPanel({
               )}
               {weather?.stale && (
                 <div className="provenance">
+                {signal?.source_note && <div>{signal.source_note}</div>}
+                {signal?.stitch_note && <div>{signal.stitch_note}</div>}
                   Weather is missing or older than two hours.
                 </div>
               )}
@@ -612,9 +616,18 @@ export default function SignalPanel({
                 />
               </Suspense>
               <div className="playback">
+                <span className="muted small">Recording playback · 2 s per file</span>
                 <button
                   aria-label={playing ? "Pause playback" : "Play playback"}
-                  onClick={() => setPlaying(!playing)}
+                  title="Play consecutive recordings · 2 seconds per file"
+                  onClick={() => {
+                    if (!playing) {
+                      setSource("archive");
+                      setView(null);
+                      onInspection({ ...inspection, frame: 0 });
+                    }
+                    setPlaying(!playing);
+                  }}
                 >
                   {playing ? <Pause size={15} /> : <Play size={15} />}
                 </button>
@@ -648,6 +661,8 @@ export default function SignalPanel({
                 </span>
               </div>
               <div className="provenance">
+                {signal?.source_note && <div>{signal.source_note}</div>}
+                {signal?.stitch_note && <div>{signal.stitch_note}</div>}
                 Channel {signal.channel} · {signal.processing} ·{" "}
                 {number(signal.sample_rate)} Hz ·{" "}
                 {utcTime(signal.acquisition_epoch)}{" "}
@@ -665,12 +680,12 @@ export default function SignalPanel({
               <Activity size={26} />
               <strong>
                 {source === "event"
-                  ? "No verified recording linked to this event"
+                  ? "No source recording linked to this event"
                   : "Open a recording to inspect its signal"}
               </strong>
               <span>
                 {source === "event"
-                  ? "Legacy events retain their original metadata. Browse the archive independently below."
+                  ? "This event has no validated source samples. Browse the archive independently below."
                   : "Select a recording and channel, then load a bounded window."}
               </span>
               {source === "event" && (

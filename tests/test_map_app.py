@@ -490,6 +490,8 @@ def test_span_signal_validates_mapping_and_uses_endpoint_bounds(recording, monke
     monkeypatch.setattr(module, 'get_recording', lambda _: rec)
     monkeypatch.setattr(module, 'rows', lambda *args: [dict(
         from_lid=1, to_lid=1, from_channel=999, to_channel=108)])
+    from src.Mapui import stitched_signals
+    monkeypatch.setattr(stitched_signals, 'rows', lambda *args: [rec])
     result = module.signal(1, 100, 0, 1, 1600, None, 7)
     assert result['heat_channels'] == [108, 999]
     rec['mapping_verified'] = False

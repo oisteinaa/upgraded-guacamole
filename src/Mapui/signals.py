@@ -120,7 +120,7 @@ def envelope(values, start_sample, dt, budget=1600):
     return ((indices + start_sample) * dt).tolist(), values[indices].tolist()
 
 
-def read_signal(recording, channel, start, duration, points=1600, neighbors=16, channel_count=None, channel_bounds=None):
+def read_signal(recording, channel, start, duration, points=1600, neighbors=16, channel_count=None, channel_bounds=None, _source=None):
     path = safe_path(recording["relative_path"])
     stat = path.stat()
     if (stat.st_size, stat.st_mtime_ns) != (
@@ -163,7 +163,7 @@ def read_signal(recording, channel, start, duration, points=1600, neighbors=16, 
     heat, rms, variance, times = [], [], [], []
     heat_times = []
     channel_variance = []
-    with h5py.File(path, "r") as f:
+    with (_source if _source is not None else h5py.File(path, "r")) as f:
         wave = np.asarray(f["data"][a:b, column], dtype=np.float64) * recording["scale"]
         if not np.all(np.isfinite(wave)):
             raise ValueError("Recording contains nonfinite samples")

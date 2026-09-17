@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "index": "/home/venator/upgraded-guacamole/results/event-review-20260917/index.json",
+  "index_digest": "8c41f96abcfe3ebb13ba63afeced8260d2e76f73cec50723b71de7110d0070bb",
+  "configuration": {
+    "command": "analyze",
+    "window_seconds": 5.0,
+    "blocks": 64,
+    "channels_per_block": 32,
+    "max_windows": 120,
+    "seed": 42,
+    "weather_csv": null,
+    "weather_dsn_env": null,
+    "weather_timezone": null,
+    "confirm_unix_time": false,
+    "weather_max_age": 7200.0,
+    "station": null
+  },
+  "preprocessing": "dataScale; linear detrend per channel; no reversal, unwrap or integration",
+  "timestamp_interpretation": "Unix seconds (unconfirmed; no weather join)",
+  "weather_status": "No weather source supplied",
+  "available_windows": 6,
+  "selected_windows": 6,
+  "feature_rows": 384,
+  "reused_feature_rows": 0,
+  "cluster_populations": {
+    "bf7facf77f07:3": 59,
+    "bf7facf77f07:2": 26,
+    "bf7facf77f07:0": 76,
+    "bf7facf77f07:4": 16,
+    "bf7facf77f07:1": 61,
+    "bf7facf77f07:5": 146
+  },
+  "model_status": {
+    "bf7facf77f07e0b99a2caa6a854a7e80058afc05c19389cece2ff04df82b65c0": "Exploratory fit; no accuracy estimate"
+  },
+  "skipped": [
+    {
+      "group": "session-d7d966efb66cdd22",
+      "reason": "Incomplete final window",
+      "samples": 6
+    }
+  ],
+  "boundaries": [
+    {
+      "before": "/home/venator/upgraded-guacamole/.local/recordings/000009.hdf5",
+      "after": "/home/venator/upgraded-guacamole/.local/recordings/000019.hdf5",
+      "discrepancy_seconds": 1.0864257760090368e-07,
+      "joined": true
+    },
+    {
+      "before": "/home/venator/upgraded-guacamole/.local/recordings/000019.hdf5",
+      "after": "/home/venator/upgraded-guacamole/.local/recordings/000029.hdf5",
+      "discrepancy_seconds": 1.0864257760090368e-07,
+      "joined": true
+    }
+  ],
+  "limitations": [
+    "Scores are review priorities, not class probabilities",
+    "Channel blocks have no assigned physical location",
+    "Scaled phase-rate spectra; wrapping and sensor calibration need independent validation"
+  ]
+}

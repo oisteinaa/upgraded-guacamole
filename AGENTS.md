@@ -249,3 +249,14 @@ collection wall time. New forecast records are deduplicated by location, type,
 valid time and issue time. These are MET/YR modeled forecasts, not measurements.
 Collector is deployed at the existing server path; hourly minute-13 cron remains.
 Local capture uses `scripts/capture_weather_local.sh` on demand.
+
+### Legacy event cleanup (applied 2026-09-17)
+
+At the user's explicit request, deleted the 115,847 unclassified legacy RMS
+records (IDs 1–115847, 2025-04-22 through 2025-06-02) from server `sensnetdb`
+and local `sensnetdb_local`. Both event tables were verified empty immediately
+after commit; the four event classes remain. Earlier event counts above are
+historical. SQL and verification output: `results/legacy-event-cleanup-20260917/`.
+Old database dumps may still contain these records; restoring them can reintroduce
+legacy events. Local test-data review: `results/event-review-20260917/README.md`.
+These are unverified signal candidates, not labeled events or training truth.

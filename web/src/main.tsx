@@ -21,8 +21,10 @@ import "@fontsource/ibm-plex-sans/latin-600.css";
 import "@fontsource/ibm-plex-sans-condensed/latin-700.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 import Map from "./Map";
+import LiveMonitor from "./LiveMonitor";
 import SignalPanel from "./SignalPanel";
 import MetricControls from "./MetricControls";
+import EventLayerControls, { defaultEventLayer } from "./EventLayerControls";
 import {
   api,
   classColors,
@@ -36,7 +38,6 @@ import {
   type Geography,
   type Feature,
   type Collection,
-  type Live,
   type Inspection,
   type MetricName,
   type MetricFrame,
@@ -53,6 +54,16 @@ function Badge({ id, name }: { id: number | null; name?: string | null }) {
   );
 }
 function App() {
+  const [eventLayer, setEventLayer] = useState(defaultEventLayer);
+  const [mapBusy, setMapBusy] = useState(false);
+  const [mapError, setMapError] = useState("");
+  const [mapRange, setMapRange] = useState("");
+  const [mapTick, setMapTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setMapTick(n => n + 1), 60000);
+    return () => clearInterval(timer);
+  }, []);
+  const [mode, setMode] = useState("investigate");
   const [sidebarTab, setSidebarTab] = useState("selection");
   const [signalVisible, setSignalVisible] = useState(true);
   const detailRequest = useRef(0);
@@ -77,7 +88,6 @@ function App() {
   useEffect(() => {
     if (!lid) return;
     const abort = new AbortController();
-    setFibre(empty);
     api<Collection>(`/fibre?lid=${lid}`, { signal: abort.signal })
       .then(setFibre)
       .catch((e) => {
@@ -86,11 +96,10 @@ function App() {
     return () => abort.abort();
   }, [lid]);
   useEffect(() => {
-    if (!inspection.rid || !lid) return;
+    if (mode !== "investigate" || !inspection.rid || !lid) return;
     const abort = new AbortController();
     setMetricBusy(true);
     setMetricError("");
-    setMetricData(null);
     api<MetricFrame>(
       `/recordings/${inspection.rid}/metrics?lid=${lid}&frame=${inspection.frame}&metric=${metric}&low=${band[0]}&high=${band[1]}`,
       { signal: abort.signal },
@@ -110,7 +119,7 @@ function App() {
         if (!abort.signal.aborted) setMetricBusy(false);
       });
     return () => abort.abort();
-  }, [inspection.rid, inspection.frame, metric, band, lid]);
+  }, [inspection.rid, inspection.frame, metric, band, lid, mode]);
   const [overview, setOverview] = useState<Overview | null>(null),
     [geo, setGeo] = useState<Geography | null>(null),
     [recordings, setRecordings] = useState<Recording[]>([]),
@@ -118,10 +127,7 @@ function App() {
     [total, setTotal] = useState(0),
     [locations, setLocations] = useState<Collection>(empty);
   const [event, setEvent] = useState<EventDetail | null>(null),
-    [selected, setSelected] = useState<Feature | null>(null),
-    [mode, setMode] = useState("investigate"),
-    [live, setLive] = useState<Live | null>(null),
-    [paused, setPaused] = useState(false);
+    [selected, setSelected] = useState<Feature | null>(null);
   const [route, setRoute] = useState(""),
     [classid, setClassid] = useState(""),
     [review, setReview] = useState("all"),
@@ -190,23 +196,14 @@ function App() {
   const filters = params.toString();
   useEffect(() => {
     const abort = new AbortController();
+    if (mode !== "investigate") return;
     setBusy(true);
     setError("");
     setEvents([]);
-    setLocations(empty);
-    Promise.all([
-      api<{ items: EventRow[]; total: number }>(
-        `/events?${filters}&offset=${offset}`,
-        { signal: abort.signal },
-      ),
-      api<{ data: Collection }>(`/map/events?${filters}`, {
-        signal: abort.signal,
-      }),
-    ])
-      .then(([e, l]) => {
+    api<{ items: EventRow[]; total: number }>(`/events?${filters}&offset=${offset}`, { signal: abort.signal })
+      .then(e => {
         setEvents(e.items);
         setTotal(e.total);
-        setLocations(l.data);
       })
       .catch((e) => {
         if (e.name !== "AbortError") setError(e.message);
@@ -215,36 +212,34 @@ function App() {
         if (!abort.signal.aborted) setBusy(false);
       });
     return () => abort.abort();
-  }, [filters, offset, refresh]);
+  }, [filters, offset, refresh, mode]);
   useEffect(() => {
-    if (mode !== "live" || paused) return;
-    let cancelled = false;
-    async function load() {
-      try {
-        const result = await api<Live>("/live");
-        if (!cancelled) {
-          setLive(result);
-          if (result.recording_id) {
-            setInspection((i) => ({
-              ...i,
-              rid: result.recording_id!,
-              frame: 0,
-            }));
-            const available = await api<Recording[]>("/recordings");
-            if (!cancelled) setRecordings(available);
-          }
-        }
-      } catch (e) {
-        if (!cancelled) setError((e as Error).message);
-      }
+    const abort = new AbortController();
+    setLocations(empty);
+    setMapError("");
+    setMapRange("");
+    setMapBusy(false);
+    if (mode !== "investigate" || !eventLayer.visible) return;
+    if (eventLayer.window === "custom" && (!eventLayer.start || !eventLayer.end || eventLayer.end <= eventLayer.start)) {
+      setMapError("Choose a start and a later end for the custom range.");
+      return;
     }
-    load();
-    const timer = setInterval(load, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [mode, paused]);
+    const params = new URLSearchParams({ window: eventLayer.window, review: eventLayer.review, classes: eventLayer.classes.join(",") });
+    if (route) params.set("route", route);
+    if (eventLayer.window === "custom") {
+      params.set("start", eventLayer.start);
+      params.set("end", eventLayer.end);
+    }
+    setMapBusy(true);
+    api<{ data: Collection; window_start: string | null; window_end: string | null }>(`/map/events?${params}`, { signal: abort.signal })
+      .then(result => {
+        setLocations(result.data);
+        setMapRange(result.window_start && result.window_end ? `${storedTime(result.window_start)} – ${storedTime(result.window_end)}` : "");
+      })
+      .catch(e => { if (e.name !== "AbortError") setMapError(e.message); })
+      .finally(() => { if (!abort.signal.aborted) setMapBusy(false); });
+    return () => abort.abort();
+  }, [eventLayer, route, refresh, mapTick, mode]);
   const selectEvent = useCallback(
     async (id: number) => {
       setSidebarTab("selection");
@@ -261,7 +256,13 @@ function App() {
         setEvent(d);
         setClassification(d.classid?.toString() ?? "");
         setNote("");
-        const f = locations.features.find((f) => f.id === id);
+        let f = locations.features.find((f) => f.id === id);
+        if (!f && d.location) f = { type: "Feature", id, geometry: { type: "Point", coordinates: [d.location.longitude, d.location.latitude] }, properties: { ...d } };
+        if (!f) {
+          const located = await api<{ data: Collection }>(`/map/events?window=all&search=${id}`);
+          if (request !== detailRequest.current) return;
+          f = located.data.features.find(feature => feature.id === id);
+        }
         if (f) setSelected(f);
       } catch (e) {
         setError((e as Error).message);
@@ -369,10 +370,10 @@ function App() {
         <div className="environment">
           <i />
           {overview?.environment ?? "Connecting…"}
-          <small>PostgreSQL · local copy</small>
+          <small>{mode === "live" ? "Live capture feed" : "Recording investigation"}</small>
         </div>
       </header>
-      <div className="summary-bar">
+      {mode === "investigate" && <div className="summary-bar">
         <div>
           <span className="eyebrow">EVENT ARCHIVE</span>
           <strong>{number(overview?.counts.events)}</strong>
@@ -401,52 +402,14 @@ function App() {
           </span>
         </div>
       </div>
-      {error && (
+      }
+      {mode === "investigate" && error && (
         <div role="alert" className="error-banner">
           {error}
           <button onClick={() => window.location.reload()}>Retry</button>
         </div>
       )}
-      {mode === "live" && (
-        <div className="live-bar">
-          <Radio size={16} />
-          <strong>
-            {paused
-              ? "Paused"
-              : live?.status === "live"
-                ? "Live capture"
-                : live?.status === "replay"
-                  ? "Archive replay"
-                  : live?.status === "stale"
-                    ? "Capture is stale"
-                    : live?.status === "unverified"
-                      ? "Acquisition time unverified"
-                      : "Capture offline"}
-          </strong>
-          <span>
-            {live?.acquisition_epoch
-              ? utcTime(live.acquisition_epoch)
-              : "Waiting for a published capture"}
-            {live?.channel_count
-              ? ` · ${number(live.channel_count)} channels`
-              : ""}
-          </span>
-          {live && !live.mapping_verified && (
-            <span>
-              Map positions use masteliste; interpolation is identified in
-              channel details
-            </span>
-          )}
-          <button onClick={() => setPaused(!paused)}>
-            {paused ? "Resume" : "Pause updates"}
-          </button>
-          {live?.recording_id && (
-            <button onClick={() => setRequestedRecording(live.recording_id!)}>
-              Inspect recording
-            </button>
-          )}
-        </div>
-      )}
+      {mode === "live" ? <LiveMonitor geo={geo} overview={overview} /> : <>
       <main className={`workspace ${signalVisible ? "" : "signal-hidden"}`}>
         <aside className="event-sidebar">
           <div className="panel-title">
@@ -570,7 +533,7 @@ function App() {
                     <Check size={14} />
                   ) : (
                     <span className="location-status">
-                      {e.alignment_verified
+                      {e.location ? (e.location.routes.join(", ") || "Channel mapped") : e.alignment_verified
                         ? (e.route ?? "Located")
                         : "Unlocated"}
                     </span>
@@ -668,9 +631,10 @@ function App() {
           />
           <div className="map-footnote">
             <MapPin size={13} />
-            {overview?.counts.aligned
-              ? `${overview.counts.aligned} events have verified recording alignment`
-              : "Historical event locations are unresolved; asset geometry remains available."}
+            {metricBusy && metricData && <span>Updating signal layer · previous frame remains visible. </span>}
+            {event && selected && !locations.features.some(f => f.id === event.id)
+              ? "Selected event highlighted outside map filters. Close selection to hide it."
+              : "Event markers follow Signal layer filters; the queue retains older events."}
           </div>
         </div>
         <aside className="detail-sidebar">
@@ -694,6 +658,10 @@ function App() {
           </div>
           <div id="sidebar-panel-signal" role="tabpanel" aria-labelledby="sidebar-tab-signal"
             className="sidebar-pane signal-settings" hidden={sidebarTab !== "signal"}>
+          <EventLayerControls value={eventLayer} onChange={setEventLayer}
+            classes={overview?.classes ?? []} count={locations.features.length}
+            busy={mapBusy} error={mapError} range={mapRange}
+            selectedOutside={!!event && !!selected && !locations.features.some(f => f.id === event.id)} />
           <MetricControls
             metric={metric}
             setMetric={setMetric}
@@ -763,9 +731,9 @@ function App() {
                 <div>
                   <dt>Location</dt>
                   <dd>
-                    {event.alignment_verified
-                      ? (event.route ?? `CH ${event.channel}`)
-                      : "Unavailable"}
+                    {event.location
+                      ? `${event.location.latitude.toFixed(5)}, ${event.location.longitude.toFixed(5)}`
+                      : event.alignment_verified ? (event.route ?? `CH ${event.channel}`) : "Unavailable"}
                   </dd>
                 </div>
                 <div>
@@ -773,16 +741,23 @@ function App() {
                   <dd>
                     {event.context?.alignment_verified
                       ? "Verified reference"
-                      : "No verified link"}
+                      : event.context?.source_linked ? "Source samples linked; alignment unverified" : "No verified link"}
                   </dd>
                 </div>
               </dl>
+              {event.location && (
+                <dl className="facts">
+                  <div><dt>Channels · DAS line {event.location.lid}</dt><dd>{event.location.channel_start}–{event.location.channel_end}</dd></div>
+                  <div><dt>Coordinate mapping</dt><dd>{event.location.mapping === "interpolated" ? `Interpolated between CH ${event.location.lower_channel} and ${event.location.upper_channel}` : "Exact channel coordinates"}</dd></div>
+                  <div><dt>Spans in sampled block</dt><dd>{event.location.spans.length ? event.location.spans.map(s => `${s.route} ${s.from_mast}–${s.to_mast}`).join(", ") : "Outside imported span coverage"}</dd></div>
+                  <div><dt>Nearest masts to marker</dt><dd>{event.location.nearest_masts.map(m => `${m.route} ${m.mast} (${Math.round(m.distance_m)} m)`).join(", ")}</dd></div>
+                </dl>
+              )}
               {!event.alignment_verified && (
                 <div className="notice">
                   <MapPin size={16} />
                   <span>
-                    This legacy event has no verified channel or recording
-                    reference. Its location is not inferred from the comment.
+                    {event.location ? event.location.note : "Time and geographic alignment are unverified. Linked source samples can still be inspected."}
                   </span>
                 </div>
               )}
@@ -1006,6 +981,7 @@ function App() {
         </aside>
       </main>
       <SignalPanel
+        mapLoading={metricBusy}
         open={signalVisible}
         setOpen={setSignalVisible}
         geography={geo}
@@ -1016,6 +992,7 @@ function App() {
         inspection={inspection}
         onInspection={setInspection}
       />
+      </>}
       <footer>
         <span>
           SENSNET <span className="muted">/ Cable intelligence</span>

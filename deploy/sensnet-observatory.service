@@ -1,0 +1,13 @@
+[Unit]
+Description=Sensnet Cable Observatory on port 8051
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/inst/oistein/upgraded-guacamole
+ExecStart=/bin/bash /home/inst/oistein/upgraded-guacamole/scripts/run_map_server.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
