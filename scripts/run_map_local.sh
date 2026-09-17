@@ -11,4 +11,4 @@ if ! "$PG_BIN/pg_ctl" -D "$ROOT_DIR/.local/pgdata" status >/dev/null 2>&1; then
     "$PG_BIN/pg_ctl" -D "$ROOT_DIR/.local/pgdata" -l "$ROOT_DIR/.local/postgres.log" \
         -o "-k $ROOT_DIR/.local/pgsocket -p 55432 -c listen_addresses=''" start
 fi
-exec "$ROOT_DIR/.venv-map/bin/python" -m uvicorn src.Mapui.api:app --host 127.0.0.1 --port 8051
+exec "$ROOT_DIR/.venv-map/bin/python" -m src.Mapui.launcher "$@"

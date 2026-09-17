@@ -260,3 +260,23 @@ historical. SQL and verification output: `results/legacy-event-cleanup-20260917/
 Old database dumps may still contain these records; restoring them can reintroduce
 legacy events. Local test-data review: `results/event-review-20260917/README.md`.
 These are unverified signal candidates, not labeled events or training truth.
+
+### Demonstration deployment preference (2026-09-17)
+
+The user requests that project changes also update the demonstration server by
+default. Deploy tested changes to `/home/inst/oistein/upgraded-guacamole` and
+restart only `sensnet-observatory.service` on port 8051. Preserve server settings
+and keep a rollback copy. Verify the deployed page and API; do not replace the
+legacy application/capture processes. Report any deployment blocker explicitly.
+Database data/schema changes still require their own authorization.
+
+### Directory demo for Live monitor (2026-09-18)
+
+The demonstration service loops `/home/inst/DataCopy` using `DAS_DEMO_DIR` in
+`.local/map-server.env`, with a ten-second minimum display interval. Both startup
+scripts accept `--demo DIRECTORY`, `--demo-interval SECONDS`, and `--no-demo`.
+The isolated publisher reads files without indexing or modifying database rows,
+preserves original acquisition times, and labels all output Demo replay.
+Detection/event creation is disabled. The API and publisher are supervised
+children of `src.Mapui.launcher`; stopping the service stops both. Real capture
+and demo snapshots are separate. See `docs/map-app.md` for operation and checks.

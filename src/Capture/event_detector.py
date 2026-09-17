@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 from src.Mapui.db import database
 
 
-def detect_events(recording, rms_by_channel, rules, legacy_timezone):
+def assess_rules(recording, rms_by_channel, rules):
     if (
         not recording["time_verified"]
         or not recording["mapping_verified"]
@@ -21,11 +21,9 @@ def detect_events(recording, rms_by_channel, rules, legacy_timezone):
         raise ValueError(
             "Detection requires independently verified time and instrument/channel mapping"
         )
-    zone = ZoneInfo(legacy_timezone)
-    source_time = datetime.fromtimestamp(recording["acquisition_epoch"], zone).replace(
-        tzinfo=None
-    )
     candidates = []
+    evaluated = set()
+    requested = set()
     # Validate the whole rule set before any writes.
     for rule in rules:
         if (
@@ -41,9 +39,36 @@ def detect_events(recording, rms_by_channel, rules, legacy_timezone):
         if rule["lid"] != recording["lid"]:
             continue
         for channel in rule["channels"]:
+            requested.add(channel)
             value = rms_by_channel.get(channel)
+            if value is not None:
+                if not math.isfinite(value):
+                    raise ValueError("Nonfinite detection metric")
+                evaluated.add(channel)
             if value is not None and value > limit:
                 candidates.append((rule, channel, value))
+    strongest = {}
+    for rule, channel, value in candidates:
+        candidate = {"channel": channel, "value": value,
+                     "threshold": float(rule["rms_limit"]), "rule": rule["name"],
+                     "ratio": value / float(rule["rms_limit"])}
+        if channel not in strongest or candidate["ratio"] > strongest[channel]["ratio"]:
+            strongest[channel] = candidate
+    report = {
+        "status": "complete" if evaluated else "unavailable",
+        "note": None if evaluated else "No configured channels are present for this instrument",
+        "evaluated_channels": len(evaluated), "requested_channels": len(requested),
+        "total_channels": len(rms_by_channel), "candidate_count": len(strongest),
+        "candidates": sorted(strongest.values(), key=lambda c: (-c["ratio"], c["channel"]))[:5],
+        "metric": "Whole-file RMS (mean included)", "unit": recording["unit"],
+    }
+    return candidates, report
+
+
+def detect_events(recording, rms_by_channel, rules, legacy_timezone, assessment=None):
+    candidates, report = assess_rules(recording, rms_by_channel, rules)
+    zone = ZoneInfo(legacy_timezone)
+    source_time = datetime.fromtimestamp(recording["acquisition_epoch"], zone).replace(tzinfo=None)
     created = []
     with database(write=True) as cur:
         # Serialize each recording's detection and make replay/retries idempotent.
@@ -84,4 +109,6 @@ def detect_events(recording, rms_by_channel, rules, legacy_timezone):
                 ),
             )
             created.append(event_id)
+    if assessment is not None:
+        assessment.update(report)
     return created

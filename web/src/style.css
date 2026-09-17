@@ -1340,14 +1340,63 @@ footer > span:first-child {
 .event-layer-controls fieldset { border: 1px solid #434c5e; padding: 8px 12px; margin: 12px 0; }
 .event-layer-controls .muted { font-size: 12px; line-height: 1.5; }
 
+/* Live monitor: two-thirds geography, one-third current-file evidence. */
 .live-workspace { display: flex; flex-direction: column; padding: 16px; gap: 12px; }
-.live-status { padding: 18px 22px; background: var(--panel, #292f3a); border: 1px solid var(--line, #434c5e); }
-.live-status h2 { margin: 6px 0; }
-.live-status p { color: #9aa5b5; }
-.live-status dl { display: flex; flex-wrap: wrap; gap: 20px 50px; }
-.live-status dt { color: #9aa5b5; font-size: 12px; }
-.live-status dd { margin: 6px 0 0; }
-.live-workspace > .map-wrap { width: 100%; height: max(500px, calc(100dvh - 340px)); flex: none; }
+.live-status { display: flex; align-items: center; flex-wrap: wrap; gap: 16px 32px; padding: 12px 18px; background: #292f3a; border: 1px solid #434c5e; }
+.live-status-heading { display: flex; align-items: center; gap: 12px; }
+.live-status h2 { margin: 3px 0 0; font-size: 16px; }
+.live-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; background: #9aa5b5; }
+.live-dot.is-live { background: #a3be8c; box-shadow: 0 0 0 4px #a3be8c16; }
+.live-status dl { display: flex; flex: 1; flex-wrap: wrap; gap: 12px 28px; margin: 0; }
+.live-status dt { color: #9aa5b5; font-size: 11px; }
+.live-status dd { margin: 4px 0 0; font-size: 12px; overflow-wrap: anywhere; }
+.live-status p { margin: 0; color: #d08770; }
+.live-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr); gap: 12px; height: max(750px, calc(100dvh - 210px)); }
+.live-map-panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #292f3a; border: 1px solid #434c5e; }
+.live-map-panel > .map-wrap { flex: 1; min-height: 350px; width: 100%; height: auto; border: 0; }
+.live-map-toolbar, .live-selection { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 8px 12px; color: #9aa5b5; font-size: 11px; }
+.live-map-toolbar { border-top: 1px solid #434c5e; justify-content: space-between; }
+.live-map-toolbar button { padding: 5px 10px; font-size: 11px; }
+.live-selection { padding-top: 0; }
+.live-selection label { display: flex; align-items: center; gap: 8px; }
+.live-selection input { width: 105px; padding: 5px 8px; }
+.live-map-error { margin: 0; padding: 0 12px 10px; color: #d08770; font-size: 12px; }
+.live-insights { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 12px; min-width: 0; min-height: 0; }
+.live-card { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; background: #292f3a; border: 1px solid #434c5e; }
+.live-card header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; padding: 13px 14px 0; }
+.live-card h2 { font-size: 15px; font-weight: 500; margin: 0; }
+.live-card header > span { color: #9aa5b5; font-size: 10px; letter-spacing: .04em; }
+.live-chart-caption { color: #9aa5b5; font-size: 11px; line-height: 1.5; margin: 6px 14px; }
+.live-card > .chart { flex: 1; height: 0; min-height: 110px; width: 100%; }
+.live-empty { flex: 1; min-height: 90px; display: flex; align-items: center; justify-content: center; padding: 24px; color: #9aa5b5; font-size: 12px; text-align: center; background: linear-gradient(145deg, #292f3a, #252b35); }
+.live-amplitude-key { display: flex; align-items: center; gap: 8px; padding: 4px 14px 10px; font-size: 10px; color: #9aa5b5; }
+.live-amplitude-key i { flex: 1; height: 5px; background: linear-gradient(to right, #536b91, #81a1c1 30%, #88c0d0 55%, #ebcb8b 80%, #d08770); }
+.live-detection-content { overflow: auto; padding: 0 14px 10px; font-size: 12px; }
+.live-detection-content .live-chart-caption { margin: 7px 0; }
+.live-card header > .detection-badge { padding: 3px 7px; border: 1px solid #4c566a; border-radius: 3px; color: #d8dee9; }
+.live-card header > .detection-failed { color: #d08770; border-color: #d08770; }
+.live-candidate-count { display: flex; align-items: baseline; gap: 8px; margin: 9px 0; }
+.live-candidate-count strong { font-size: 26px; font-weight: 500; color: #eceff4; }
+.live-candidate-count > span { margin-left: auto; color: #9aa5b5; font-size: 10px; }
+.live-candidates { list-style: none; margin: 8px 0; padding: 0; }
+.live-candidates li + li { border-top: 1px solid #434c5e; }
+.live-candidates button { display: block; width: 100%; padding: 8px 0; background: transparent; border: 0; text-align: left; border-radius: 0; }
+.live-candidates button:hover { background: #343c49; }
+.live-candidates button > span { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.live-candidates b { color: #ebcb8b; font-weight: 400; }
+.live-candidates small { display: block; margin-top: 4px; color: #9aa5b5; font-size: 10px; }
+@media (max-width: 1099px) {
+  .live-grid { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .live-map-panel { min-height: 480px; }
+  .live-map-panel > .map-wrap { flex: none; height: 420px; }
+  .live-insights { grid-template-rows: repeat(3, 280px); }
+}
+@media (max-width: 600px) {
+  .live-workspace { padding: 8px; }
+  .live-status { gap: 14px; padding: 12px; }
+  .live-status dl { flex-basis: 100%; gap: 12px 20px; }
+  .live-card h2 { font-size: 14px; }
+}
 
 .wind-station { width: 9px; height: 9px; border-radius: 50%; background: #e5e9f0; border: 2px solid #16212d; box-shadow: 0 0 0 1px #e5e9f080; cursor: help; }
 .wind-station-stale { border: 2px dashed #e5e9f0; background: #354252; }
@@ -1362,3 +1411,6 @@ footer > span:first-child {
 .map-legend .legend-handle span { font-size: 12px; }
 .map-legend .wind-key { position: static; display: flex; flex-direction: column; gap: 5px; margin-top: 12px; padding: 10px 0 0; border-top: 1px solid #45505d; background: transparent; }
 .map-legend .wind-key span { display: block; }
+
+.live-dot.is-demo { background: #ebcb8b; box-shadow: 0 0 0 4px #ebcb8b16; }
+.live-status .demo-source { flex-basis: 100%; margin: 0; color: #ebcb8b; font-size: 11px; overflow-wrap: anywhere; }

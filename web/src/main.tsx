@@ -370,7 +370,7 @@ function App() {
         <div className="environment">
           <i />
           {overview?.environment ?? "Connecting…"}
-          <small>{mode === "live" ? "Live capture feed" : "Recording investigation"}</small>
+          <small>{mode === "live" ? "Acquisition / demo monitor" : "Recording investigation"}</small>
         </div>
       </header>
       {mode === "investigate" && <div className="summary-bar">

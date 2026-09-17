@@ -6,12 +6,7 @@ import os
 import tempfile
 import time
 from pathlib import Path
-
-import h5py
-import numpy as np
-
 from .db import ROOT, rows
-from .signals import safe_path
 
 
 def snapshot_path():
@@ -21,22 +16,9 @@ def snapshot_path():
 def publish_recording(recording_id, replay=False, rules=None, legacy_timezone=None):
     recording = rows("SELECT * FROM das_recordings WHERE id=%s", (recording_id,))[0]
     n = len(recording["channels"])
-    sums = np.zeros(n)
-    squares = np.zeros(n)
-    with h5py.File(safe_path(recording["relative_path"]), "r") as f:
-        for a in range(0, recording["samples"], 256):
-            block = (
-                np.asarray(f["data"][a : a + 256, :], dtype=np.float64)
-                * recording["scale"]
-            )
-            if not np.all(np.isfinite(block)):
-                raise ValueError("Nonfinite samples in live recording")
-            sums += block.sum(axis=0)
-            squares += (block * block).sum(axis=0)
-    rms = np.sqrt(squares / recording["samples"])
-    var = np.maximum(
-        0, squares / recording["samples"] - (sums / recording["samples"]) ** 2
-    )
+    from .live_summary import recording_summary, profile_summary
+
+    rms, var, heatmap = recording_summary(recording)
     mapping = {}
     if recording["mapping_verified"] and recording["lid"] is not None:
         mapping = {
@@ -62,7 +44,19 @@ def publish_recording(recording_id, replay=False, rules=None, legacy_timezone=No
     from .metrics import metric_frame
 
     fixed = metric_frame(recording, 0)
+    try:
+        profile = dict(status="complete", **profile_summary(recording["channels"], fixed["values"]["ac_rms"]),
+                       start=fixed["start"], end=fixed["end"])
+    except ValueError as exc:
+        profile = {"status": "unavailable", "note": str(exc)}
     payload = {
+        "summary_version": 1,
+        "filename": Path(recording["relative_path"]).name,
+        "lid": recording["lid"],
+        "duration": recording["samples"] * recording["dt"],
+        "heatmap": heatmap,
+        "profile": profile,
+        "detection": {"status": "not_configured"},
         "recording_id": recording_id,
         "frame": 0,
         "frame_count": fixed["frame_count"],
@@ -80,24 +74,37 @@ def publish_recording(recording_id, replay=False, rules=None, legacy_timezone=No
         "rms_min": float(rms.min()),
         "rms_max": float(rms.max()),
     }
-    if rules is not None:
-        if not legacy_timezone:
-            raise ValueError("Detection requires an explicit legacy writer timezone")
+    eligible = recording["time_verified"] and recording["mapping_verified"] and recording["lid"] is not None
+    if rules is not None and not eligible:
+        payload["detection"] = {"status": "unavailable", "note": "Detection requires verified acquisition time and instrument/channel mapping"}
+    elif rules is not None:
+        import logging
         from src.Capture.event_detector import detect_events
 
-        payload["candidate_events"] = detect_events(
-            recording,
-            dict(zip(recording["channels"], rms.tolist())),
-            rules,
-            legacy_timezone,
-        )
+        payload["detection"] = {"status": "processing"}
+        # Publish actual pending detection without withholding the current signal.
+        write_snapshot(payload)
+        try:
+            if not legacy_timezone:
+                raise ValueError("Detection requires an explicit legacy writer timezone")
+            payload["candidate_events"] = detect_events(
+                recording, dict(zip(recording["channels"], rms.tolist())),
+                rules, legacy_timezone, assessment=payload["detection"],
+            )
+        except Exception:
+            logging.getLogger(__name__).exception("Detection failed for recording %s", recording_id)
+            payload["detection"] = {"status": "failed", "note": "Detection failed; check capture logs"}
+    write_snapshot(payload)
+    return payload
+
+
+def write_snapshot(payload):
     target = snapshot_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode="w", dir=target.parent, delete=False) as f:
         json.dump(payload, f, allow_nan=False)
         temporary = f.name
     os.replace(temporary, target)
-    return payload
 
 
 def load_snapshot(max_points=3000):
@@ -128,7 +135,11 @@ def load_snapshot(max_points=3000):
         data["points"] = reduced
     data["display_points"] = len(data["points"])
     age = max(0, time.time() - data["published_at"])
-    acquisition_age = max(0, time.time() - data["acquisition_epoch"])
+    acquisition_age = max(0, time.time() - data["acquisition_epoch"]) if data.get("acquisition_epoch") is not None else None
+    if data.get("demo") and os.getenv("DAS_DEMO_ENABLED") == "1":
+        data.update(age_seconds=age, acquisition_age_seconds=acquisition_age,
+                    status="demo_stale" if age > 30 else "demo_loading" if data.get("demo_loading") else "demo")
+        return data
     data.update(
         age_seconds=age,
         acquisition_age_seconds=acquisition_age,
@@ -137,7 +148,7 @@ def load_snapshot(max_points=3000):
         else "unverified"
         if not data["time_verified"]
         else "stale"
-        if max(age, acquisition_age) > 30
+        if acquisition_age is None or max(age, acquisition_age) > 30
         else "live",
     )
     return data

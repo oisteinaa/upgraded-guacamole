@@ -50,7 +50,7 @@ async def same_origin(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     if request.url.path.startswith("/api/"):
-        response.headers["Cache-Control"] = "no-store"
+        response.headers.setdefault("Cache-Control", "no-store")
     return response
 
 
@@ -624,6 +624,18 @@ def live():
     from .live import load_snapshot
 
     return load_snapshot()
+
+
+@app.get("/api/demo/metrics/{token}")
+def demo_metrics(token: str):
+    from .demo import cache_root
+
+    if os.getenv("DAS_DEMO_ENABLED") != "1" or len(token) != 64 or any(c not in "0123456789abcdef" for c in token):
+        raise HTTPException(404, "Demo metrics unavailable")
+    path = cache_root() / f"{token}.metrics.json"
+    if not path.is_file():
+        raise HTTPException(404, "Demo frame is not prepared")
+    return FileResponse(path, media_type="application/json", headers={"Cache-Control": "private, max-age=3600, immutable"})
 
 
 DIST = ROOT / "web/dist"

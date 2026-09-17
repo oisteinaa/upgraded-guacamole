@@ -119,6 +119,25 @@ export type Feature = {
 export type Collection = { type: "FeatureCollection"; features: Feature[] };
 export type Geography = { masts: Collection; spans: Collection };
 export type Live = {
+  demo?: boolean;
+  demo_token?: string;
+  demo_has_metric?: boolean;
+  demo_source?: string;
+  demo_position?: number;
+  demo_count?: number;
+  demo_cycle?: number;
+  demo_preparing?: boolean;
+  demo_mapping_note?: string;
+  note?: string;
+  summary_version?: number;
+  filename?: string;
+  lid?: number | null;
+  duration?: number;
+  published_at?: number;
+  metric_processing?: string;
+  profile?: { status: string; note?: string; start?: number; end?: number; channels?: (number | null)[]; values?: (number | null)[] };
+  heatmap?: { status: string; note?: string; channel_edges?: number[]; time_edges?: number[]; values?: (number | null)[][]; peak_channels?: (number | null)[][]; aggregation?: string };
+  detection?: { status: string; note?: string | null; evaluated_channels?: number; requested_channels?: number; total_channels?: number; candidate_count?: number; metric?: string; unit?: string; candidates?: { channel: number; value: number; threshold: number; rule: string; ratio: number }[] };
   frame?: number;
   frame_count?: number;
   status: string;

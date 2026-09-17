@@ -306,7 +306,10 @@ def test_detection_is_idempotent_and_retains_null_class(client):
     try:
         created = detect_events(rec, {0: 12}, [rule], "Europe/Oslo")
         assert len(created) == 1
-        assert detect_events(rec, {0: 12}, [rule], "Europe/Oslo") == []
+        assessment = {}
+        assert detect_events(rec, {0: 12}, [rule], "Europe/Oslo", assessment=assessment) == []
+        assert assessment["status"] == "complete" and assessment["candidate_count"] == 1
+        assert assessment["evaluated_channels"] == 1
         event = client.get(f"/api/events/{created[0]}").json()
         assert event["classid"] is None and event["context"]["alignment_verified"]
         assert event["context"]["recording_id"] == -20

@@ -14,6 +14,7 @@ export DAS_ENVIRONMENT="${DAS_ENVIRONMENT:-Server investigation}"
 export DAS_LIVE_SNAPSHOT="${DAS_LIVE_SNAPSHOT:-$ROOT_DIR/.local/server-live.json}"
 export DAS_METRIC_CACHE="${DAS_METRIC_CACHE:-$ROOT_DIR/.local/metric-cache}"
 export DAS_REVIEW_WRITES="${DAS_REVIEW_WRITES:-0}"
+export DAS_BIND_HOST="${DAS_BIND_HOST:-0.0.0.0}"
 PYTHON="$ROOT_DIR/.venv-map/bin/python"
 [[ -x "$PYTHON" ]] || { echo 'Install requirements-map.txt into .venv-map first.' >&2; exit 1; }
 [[ -f web/dist/index.html ]] || { echo 'Build the frontend: cd web && npm ci && npm run build' >&2; exit 1; }
@@ -25,4 +26,4 @@ with database() as cur:
         if cur.fetchone()['to_regclass'] is None:
             raise SystemExit('Missing ' + table + ': migration 004_investigation.sql must be approved and applied first.')
 PY
-exec "$PYTHON" -m uvicorn src.Mapui.api:app --host "${DAS_BIND_HOST:-0.0.0.0}" --port 8051
+exec "$PYTHON" -m src.Mapui.launcher "$@"

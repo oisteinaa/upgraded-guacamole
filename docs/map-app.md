@@ -398,3 +398,98 @@ Drag the **Map legend** header to reposition the controls and wind key together;
 positions are remembered separately for Live and Investigate. Keyboard users can
 focus the header and use arrow keys to move it, or Home to reset its position. Speed and direction are paired by station, collection
 time, forecast valid time and issue time via the read-only /api/map/wind endpoint.
+
+
+### Live network insights (2026-09-17)
+
+Live monitor uses a two-thirds map / one-third insights desktop layout. The
+right column contains an AC RMS profile for the published map frame, a whole-file
+time/channel heatmap, and whole-file detection status. Below 1100 px these panels
+stack. The compact status bar identifies the current file and acquisition age.
+Click a chart peak, heatmap cell or candidate to highlight its explicit channel;
+map signal clicks highlight the charts. Unmapped channels have no guessed position.
+Amplitude colours share a scale locked across file updates until Rescale or a
+change of instrument, processing or units. Colour is amplitude, not severity.
+
+Capture adds `summary_version=1`, `filename`, `lid`, `duration`, `profile`,
+`heatmap`, and `detection` to `/api/live`. The profile retains real min/max channel
+samples in at most 600 display bins. The heatmap uses at most 120 time bins and
+300 spatial bins, inserting null cells at explicit channel gaps. Each cell is
+the largest per-channel mean-removed RMS in that bin; clicking selects the actual
+peak channel. Its time-bin mean removal differs from the profile's fixed-frame
+mean removal. Streaming reads are bounded to one million values per block and
+reuse the capture pass that computes whole-file raw RMS. Excessive fragmentation
+reports a summary unavailable instead of bridging gaps. No cross-file stitching
+or historical fallback is used in Live.
+
+Detection is Not configured, Processing, Complete, Failed or Unavailable.
+Processing is published only during an actual assessment. Unverified alignment
+prevents assessment. Complete reports evaluated/recorded/configured channel
+counts and up to five candidate channels ranked by RMS/threshold ratio, combining
+multiple matching rules on the same channel. This assessment is recomputed on
+retry even when event insertion is deduplicated. Detection retains whole-file
+RMS **including the mean**, distinct from the charts' AC RMS. No new thresholds
+or class predictions are supplied. Detection failures retain current signal
+summaries; old publishers show missing summaries/assessment explicitly.
+
+Panels switch file identity together after the corresponding map request and
+clear when acquisition or publication becomes stale after 30 seconds. A failed
+map request reports the map error while retaining the same file's available
+charts. Offline, replay and unverified-time snapshots never populate live charts.
+
+Run `scripts/check_live_browser.py` with the prepared Playwright environment to
+check desktop/mobile layout, selection, scale locking, replacement requests,
+freshness and detection states. `DAS_BROWSER_URL` selects another deployment.
+Fixtures intercept only browser requests and never publish captures or create
+server events; screenshots go under `.local/screenshots/live-monitor/`.
+Without a capture publisher or explicit demo mode, the monitor displays waiting
+states. The directory demo below can populate the monitor with labelled replay.
+
+### Looping directory demo (2026-09-18)
+
+Both launchers accept a directory-demo option:
+
+```bash
+# Server (uses /home/inst/DataCopy for the demonstration)
+bash scripts/run_map_server.sh --demo /home/inst/DataCopy --demo-interval 10
+# Local, with the prepared sample recordings
+bash scripts/run_map_local.sh --demo .local/recordings --demo-interval 10
+```
+
+The supervisor starts the API and a separate demo publisher, stops both on exit,
+and exits with failure if either child unexpectedly stops. The systemd service
+then restarts normally. The server's `.local/map-server.env` enables the default
+with `DAS_DEMO_DIR=/home/inst/DataCopy` and `DAS_DEMO_INTERVAL=10`. `--no-demo`
+overrides that configuration and restores normal live-capture monitoring.
+`--demo-lid` / `DAS_DEMO_LID` selects an illustrative mapping if the database has
+multiple instruments; a single instrument is selected automatically.
+
+Files with `.h5` or `.hdf5` extensions are read recursively in relative filename
+order, then the directory is scanned again and the loop restarts. Each successful
+file remains visible for at least the interval (5–300 seconds). Unreadable,
+incomplete or changing files are skipped and logged; an empty/unreadable directory
+shows a waiting state and is retried. Source files and database rows are never
+written, indexed, reclassified or marked verified by demo mode.
+
+The demo has its own atomic snapshot, a single-publisher lock, and a disk cache at
+`.local/demo-cache` (override with `DAS_DEMO_CACHE`). Cache identities include the
+source path/stat, processing version, instrument and current coordinate-map
+fingerprint. Prepared summaries and map frames are reused on later loops.
+Only the demo child changes its archive root; Investigation retains its configured
+archive and database references. `/api/demo/metrics/{token}` serves cached frames
+only when the API was explicitly launched in demo mode.
+
+The monitor prominently displays **Demo replay**, source directory, file position
+and loop number. Original acquisition timestamps remain intact. Publication
+heartbeats maintain demo freshness while the next file is prepared; if the
+publisher stops for 30 seconds its visuals become stale. This does not bypass
+freshness checks for genuine live capture or ordinary archive replay. Geographic
+positions use the current mapping provisionally; optional wind arrows query the
+recording's original time and explicitly retain unverified-alignment messaging.
+Detection is disabled and no events are created during demo replay.
+
+`tests/test_demo.py` covers startup options, read-only preparation/cache identity,
+loop wraparound, invalid/empty files, explicit demo status and metric API gating.
+`scripts/check_demo_browser.py` checks a real running demo without injecting data;
+set `DAS_BROWSER_URL` to the server URL to verify deployment. Screenshots are saved
+under `.local/screenshots/demo-monitor/`.

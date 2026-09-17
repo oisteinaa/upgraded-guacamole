@@ -5,15 +5,19 @@ export default function Chart({
   data,
   layout = {},
   onZoom,
+  onPoint,
 }: {
   data: Data[];
   layout?: Partial<Layout>;
   onZoom?: (a: number, b: number) => void;
+  onPoint?: (point: { x: number; y: number; customdata?: unknown }) => void;
 }) {
   const el = useRef<HTMLDivElement>(null);
   const pending = useRef<Promise<unknown>>(Promise.resolve());
   const callback = useRef(onZoom);
   callback.current = onZoom;
+  const pointCallback = useRef(onPoint);
+  pointCallback.current = onPoint;
   useEffect(() => {
     const node = el.current!;
     let active = true;
@@ -50,6 +54,10 @@ export default function Chart({
         on: (name: string, fn: (e: any) => void) => void;
       };
       gd.removeAllListeners("plotly_relayout");
+      gd.removeAllListeners("plotly_click");
+      gd.on("plotly_click", (e) => {
+        if (e.points?.[0]) pointCallback.current?.(e.points[0]);
+      });
       gd.on("plotly_relayout", (e) => {
         if (
           e["xaxis.range[0]"] !== undefined &&
