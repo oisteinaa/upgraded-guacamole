@@ -1,3 +1,11 @@
+# Oistein 17 sept 2026
+## Remember
+ Agreed—we’ll keep AC RMS as the current vibration metric and leave baseline learning until the live interrogator and its historical data
+  are available.
+
+  Then we can check acquisition timestamps, channel mapping and signal scaling, and identify representative normal periods for learning.
+  Historical data will be useful, but we should review it before treating it as normal operation.
+
 # Oistein 16 sept 2026
 ## Overview of the tech stack
 The project has evolved from a collection of Flask/Dash pages into Cable Observatory: a React browser application backed by a Python

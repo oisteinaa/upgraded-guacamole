@@ -115,11 +115,14 @@ def metric_frame(recording, frame=0, low=1.0, high=10.0):
             output = {name: np.empty(len(recording["channels"])) for name in METRICS}
             with h5py.File(path, "r") as f:
                 dataset = f["data"]
-                # Read modest frames once; stream channel blocks for larger inputs.
+                # Bound raw-frame memory; larger budgets avoid repeated remote reads.
+                read_mb = int(os.getenv("DAS_METRIC_READ_MB", "256"))
+                if not 16 <= read_mb <= 1024:
+                    raise ValueError("DAS_METRIC_READ_MB must be from 16 to 1024")
                 raw = (
                     dataset[a:b, :]
                     if (b - a) * dataset.shape[1] * dataset.dtype.itemsize
-                    <= 256 * 1024**2
+                    <= read_mb * 1024**2
                     else None
                 )
                 block_width = max(1, min(128, 4_000_000 // (b - a)))

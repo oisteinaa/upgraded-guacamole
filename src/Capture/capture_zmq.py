@@ -22,6 +22,8 @@ def main():
     p.add_argument("--interval", type=float, default=10)
     p.add_argument("--bind", default="tcp://127.0.0.1:12345")
     p.add_argument("--lid", type=int)
+    p.add_argument("--latest-only", action="store_true",
+                   help="Coalesce queued notifications for a current live display")
     p.add_argument(
         "--rules", type=Path, help="Calibrated RMS rules for this signal representation"
     )
@@ -61,10 +63,18 @@ def main():
             socket = context.socket(zmq.PULL)
             socket.bind(args.bind)
             while True:
-                message = socket.recv_json()
                 try:
+                    message = socket.recv_json()
+                    skipped = 0
+                    if args.latest_only:
+                        # Bound each drain so continuous senders cannot starve processing.
+                        while skipped < 1000 and socket.poll(0, zmq.POLLIN):
+                            message = socket.recv_json()
+                            skipped += 1
+                    if skipped:
+                        print(f"Skipped {skipped} queued notifications for live freshness", flush=True)
                     process(message["dest_path"])
-                except (OSError, ValueError, KeyError) as exc:
+                except (OSError, ValueError, KeyError, TypeError) as exc:
                     print(f"Rejected capture: {exc}", file=sys.stderr, flush=True)
 
 
