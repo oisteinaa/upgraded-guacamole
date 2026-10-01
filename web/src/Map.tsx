@@ -222,7 +222,7 @@ export default function Map({
         tooltip
           .setLngLat((f.geometry as any).coordinates)
           .setText(
-            `Channel ${p.recording_channel} · ${Number(p.value).toPrecision(4)} ${metricRef.current?.unit ?? ""} · ${p.bucket_count} channel(s) in display group`,
+            `Channel ${p.recording_channel} · ${Number(p.value).toPrecision(4)} ${metricRef.current?.unit ?? ""}${p.raw_value != null ? ` · raw ${Number(p.raw_value).toPrecision(4)} · calm median ${Number(p.calm_median).toPrecision(4)}${p.calm_scale_floored ? " · scale floor applied" : ""}` : ""} · ${p.bucket_count} channel(s) in display group`,
           )
           .addTo(m);
       });
@@ -510,7 +510,7 @@ export default function Map({
         <small>Dashed spans are inferred connections</small>
         {metricData && (
           <small>
-            {metricNames[metricData.metric]} · {displayCount} display points
+            {metricData.unit === "calm score" ? "Calm score · " : ""}{metricNames[metricData.metric]} · {displayCount} display points
             <br />
             Gray: mapped fibre without displayed signal
           </small>

@@ -1,3 +1,12 @@
+export type Normalization = {
+  status: string; note?: string; baseline_id?: string; available_channels: number;
+  total_channels?: number; training_start?: number; training_end?: number;
+  illustrative?: boolean; training_reference?: boolean; training_frames?: boolean[];
+  channels?: number[]; times?: number[]; starts?: number[]; ends?: number[];
+  scores?: Record<MetricName, (number | null)[][]>;
+  raw?: Record<MetricName, number[][]>; medians?: Record<MetricName, (number | null)[]>;
+  profile?: Live["profile"]; heatmap?: Live["heatmap"];
+};
 export type EventLocation = {
   lid: number; channel: number; channel_start: number; channel_end: number;
   latitude: number; longitude: number; mapping: string;
@@ -74,6 +83,7 @@ export type Recording = {
   processing: string;
 };
 export type Signal = {
+  normalization?: Normalization;
   truncated?: boolean;
   requested_start?: number;
   requested_end?: number;
@@ -119,6 +129,7 @@ export type Feature = {
 export type Collection = { type: "FeatureCollection"; features: Feature[] };
 export type Geography = { masts: Collection; spans: Collection };
 export type Live = {
+  normalization?: Normalization;
   demo?: boolean;
   demo_token?: string;
   demo_has_metric?: boolean;
@@ -135,8 +146,8 @@ export type Live = {
   duration?: number;
   published_at?: number;
   metric_processing?: string;
-  profile?: { status: string; note?: string; start?: number; end?: number; channels?: (number | null)[]; values?: (number | null)[] };
-  heatmap?: { status: string; note?: string; channel_edges?: number[]; time_edges?: number[]; values?: (number | null)[][]; peak_channels?: (number | null)[][]; aggregation?: string };
+  profile?: { status: string; note?: string; start?: number; end?: number; channels?: (number | null)[]; values?: (number | null)[]; raw?: (number | null)[]; medians?: (number | null)[] };
+  heatmap?: { status: string; note?: string; channel_edges?: number[]; time_edges?: number[]; values?: (number | null)[][]; peak_channels?: (number | null)[][]; aggregation?: string; raw?: (number | null)[][]; medians?: (number | null)[][] };
   detection?: { status: string; note?: string | null; evaluated_channels?: number; requested_channels?: number; total_channels?: number; candidate_count?: number; metric?: string; unit?: string; candidates?: { channel: number; value: number; threshold: number; rule: string; ratio: number }[] };
   frame?: number;
   frame_count?: number;
@@ -187,6 +198,7 @@ export const metricNames: Record<MetricName, string> = {
 };
 export type Inspection = { rid: number; channel: number; frame: number };
 export type MetricFrame = {
+  normalization?: Normalization;
   acquisition_epoch: number;
   time_verified: boolean;
   recording_id: number;

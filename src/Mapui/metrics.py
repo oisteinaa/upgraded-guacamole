@@ -308,7 +308,7 @@ def resolve_positions(recording, positions, regions):
     return result, counts
 
 
-def map_metrics(recording, lid, frame=0, metric="ac_rms", low=1.0, high=10.0):
+def map_metrics(recording, lid, frame=0, metric="ac_rms", low=1.0, high=10.0, illustrative=False):
     if metric not in METRICS:
         raise ValueError("Unknown signal metric")
     if recording["lid"] is not None and recording["lid"] != lid:
@@ -335,8 +335,9 @@ def map_metrics(recording, lid, frame=0, metric="ac_rms", low=1.0, high=10.0):
     ]
     values = [f["properties"]["value"] for f in features]
     missing = len(columns) - len(features)
+    source_frame = dict(result)
     result.pop("values")
-    return dict(
+    output = dict(
         **result,
         recording_id=recording["id"],
         lid=lid,
@@ -356,3 +357,7 @@ def map_metrics(recording, lid, frame=0, metric="ac_rms", low=1.0, high=10.0):
             note="masteliste geometry: exact IDs or interpolation within adjacent samples with a matching acquisition origin; no extrapolation, gap bridging or signal-channel shift.",
         ),
     )
+
+    from .calm import add_map_normalization
+    add_map_normalization(output, recording, source_frame, metric, illustrative)
+    return output

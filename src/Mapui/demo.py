@@ -19,7 +19,7 @@ from .live_summary import profile_summary, recording_summary
 from .metrics import VERSION as METRIC_VERSION, fibre_positions, map_metrics, metric_frame
 from .signals import inspect_recording
 
-VERSION = "demo-v1"
+VERSION = "demo-v2"
 log = logging.getLogger(__name__)
 
 
@@ -59,7 +59,8 @@ def mapping_context(lid=None):
 
 def prepare_file(path, lid, mapping_fingerprint):
     stat = path.stat()
-    identity = [VERSION, METRIC_VERSION, str(path.resolve()), stat.st_size, stat.st_mtime_ns,
+    from .calm import identity as baseline_identity, live_activity
+    identity = [VERSION, baseline_identity(), METRIC_VERSION, str(path.resolve()), stat.st_size, stat.st_mtime_ns,
                 lid, mapping_fingerprint]
     token = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
     summary_path = cache_root() / f"{token}.summary.json"
@@ -88,10 +89,11 @@ def prepare_file(path, lid, mapping_fingerprint):
     metric = None
     mapping_note = "No unambiguous instrument mapping; choose --demo-lid to display geography."
     if lid is not None:
-        metric = map_metrics(recording, lid, frame=0, metric="ac_rms")
+        metric = map_metrics(recording, lid, frame=0, metric="ac_rms", illustrative=True)
         mapping_note = "Illustrative positions from the current channel mapping; historical alignment is unverified."
         write_json(metric_path, metric)
     result = {
+        "normalization": live_activity(recording, illustrative=True),
         "summary_version": 1, "recording_id": recording["id"], "frame": 0,
         "frame_count": frame["frame_count"], "metric_processing": frame["processing"],
         "filename": str(path.relative_to(Path(os.environ["DAS_ARCHIVE_ROOT"]))),

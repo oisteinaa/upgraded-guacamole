@@ -172,7 +172,10 @@ export default function MetricControls({
           <small>Exploratory band · not an event classification</small>
         </div>
       )}
-      <div className="color-controls">
+      <fieldset
+        className="color-controls"
+        disabled={data?.unit === "calm score"}
+      >
         <label>
           Color min
           <input
@@ -249,7 +252,7 @@ export default function MetricControls({
         >
           <RefreshCw size={13} />
         </button>
-      </div>
+      </fieldset>
       <div className="color-legend">
         <div className="color-ramp" />
         <div>

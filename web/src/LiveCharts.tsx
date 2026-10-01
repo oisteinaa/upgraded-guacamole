@@ -11,18 +11,20 @@ const colors: [number, string][] = [
 ];
 export default memo(function LiveCharts({
   snapshot,
+  normalized = false,
   maximum,
   selected,
   onChannel,
 }: {
   snapshot: Live | null;
+  normalized?: boolean;
   maximum: number;
   selected: number | null;
   onChannel: (channel: number) => void;
 }) {
   const { profileData, heatData, profileLayout, heatLayout } = useMemo(() => {
-    const p = snapshot?.profile,
-      h = snapshot?.heatmap;
+    const p = normalized ? snapshot?.normalization?.profile : snapshot?.profile,
+      h = normalized ? snapshot?.normalization?.heatmap : snapshot?.heatmap;
     const shapes: Partial<Layout>["shapes"] =
       selected == null
         ? []
@@ -65,7 +67,13 @@ export default memo(function LiveCharts({
                 cmin: 0,
                 cmax: maximum,
               },
-              hovertemplate: "Channel %{x}<br>AC RMS %{y:.4g}<extra></extra>",
+              customdata: p.values?.map((_, i) => [
+                p.raw?.[i],
+                p.medians?.[i],
+              ]) as number[][],
+              hovertemplate: normalized
+                ? "Channel %{x}<br>Calm score %{y:.4g}<br>Raw %{customdata[0]:.4g}<br>Calm median %{customdata[1]:.4g}<extra></extra>"
+                : "Channel %{x}<br>AC RMS %{y:.4g}<extra></extra>",
             },
           ]
         : [];
@@ -77,15 +85,20 @@ export default memo(function LiveCharts({
               x: h.channel_edges,
               y: h.time_edges,
               z: h.values,
-              customdata: h.peak_channels as number[][],
+              customdata: (normalized
+                ? h.peak_channels?.map((row, r) =>
+                    row.map((ch, c) => [ch, h.raw?.[r][c], h.medians?.[r][c]]),
+                  )
+                : h.peak_channels) as any,
               colorscale: colors,
               zmin: 0,
               zmax: maximum,
               hoverongaps: false,
               connectgaps: false,
               showscale: false,
-              hovertemplate:
-                "Peak channel %{customdata}<br>Time %{y:.3f} s<br>Max AC RMS %{z:.4g}<extra></extra>",
+              hovertemplate: normalized
+                ? "Peak channel %{customdata[0]}<br>Time %{y:.3f} s<br>Calm score %{z:.4g}<br>Raw %{customdata[1]:.4g}<br>Median %{customdata[2]:.4g}<extra></extra>"
+                : "Peak channel %{customdata}<br>Time %{y:.3f} s<br>Max AC RMS %{z:.4g}<extra></extra>",
             },
           ]
         : [];
@@ -95,7 +108,7 @@ export default memo(function LiveCharts({
       profileLayout: {
         ...common,
         yaxis: {
-          title: { text: "AC RMS" },
+          title: { text: normalized ? "Calm score" : "AC RMS" },
           gridcolor: "#3b4252",
           rangemode: "tozero",
         },
@@ -105,9 +118,9 @@ export default memo(function LiveCharts({
         yaxis: { title: { text: "File time (s)" }, gridcolor: "#3b4252" },
       } as Partial<Layout>,
     };
-  }, [snapshot, maximum, selected]);
-  const h = snapshot?.heatmap,
-    p = snapshot?.profile;
+  }, [snapshot, maximum, selected, normalized]);
+  const h = normalized ? snapshot?.normalization?.heatmap : snapshot?.heatmap,
+    p = normalized ? snapshot?.normalization?.profile : snapshot?.profile;
   const edges = h?.time_edges;
   const resolution =
     edges && edges.length > 1
@@ -118,11 +131,11 @@ export default memo(function LiveCharts({
       <section className="live-card" aria-label="Activity along the fibre">
         <header>
           <h2>Activity along the fibre</h2>
-          <span>AC RMS</span>
+          <span>{normalized ? "Calm score" : "AC RMS"}</span>
         </header>
         <p className="live-chart-caption">
           {snapshot
-            ? `Map frame · ${number(p?.start)}–${number(p?.end)} s · ${snapshot.unit ?? ""}`
+            ? `Map frame · ${number(p?.start)}–${number(p?.end)} s · ${normalized ? "calm score" : (snapshot.unit ?? "")}`
             : "Latest acquisition · same frame as the map"}
         </p>
         {profileData.length ? (
@@ -146,7 +159,9 @@ export default memo(function LiveCharts({
           <span>WHOLE FILE</span>
         </header>
         <p className="live-chart-caption" title={h?.aggregation}>
-          Maximum AC RMS per time/channel bin
+          {normalized
+            ? "Maximum calm score per ten-second frame/channel bin"
+            : "Maximum AC RMS per time/channel bin"}
           {resolution != null ? ` · ≈${number(resolution)} s/bin` : ""}
         </p>
         {heatData.length ? (
@@ -154,7 +169,12 @@ export default memo(function LiveCharts({
             data={heatData}
             layout={heatLayout}
             onPoint={(point) => {
-              if (typeof point.customdata === "number")
+              if (
+                Array.isArray(point.customdata) &&
+                typeof point.customdata[0] === "number"
+              )
+                onChannel(point.customdata[0]);
+              else if (typeof point.customdata === "number")
                 onChannel(point.customdata);
             }}
           />
@@ -170,7 +190,8 @@ export default memo(function LiveCharts({
           <span>0</span>
           <i />
           <span>
-            {number(maximum)} {snapshot?.unit ?? ""}
+            {number(maximum)}{" "}
+            {normalized ? "calm score" : (snapshot?.unit ?? "")}
           </span>
         </div>
       </section>

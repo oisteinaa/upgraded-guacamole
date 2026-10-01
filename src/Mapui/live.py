@@ -74,6 +74,8 @@ def publish_recording(recording_id, replay=False, rules=None, legacy_timezone=No
         "rms_min": float(rms.min()),
         "rms_max": float(rms.max()),
     }
+    from .calm import live_activity
+    payload["normalization"] = live_activity(recording)
     eligible = recording["time_verified"] and recording["mapping_verified"] and recording["lid"] is not None
     if rules is not None and not eligible:
         payload["detection"] = {"status": "unavailable", "note": "Detection requires verified acquisition time and instrument/channel mapping"}

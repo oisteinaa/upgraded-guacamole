@@ -28,7 +28,7 @@ with sync_playwright() as p:
     snapshot = dict(status="live", recording_id=900001, filename="browser-fixture.hdf5", frame=0,
                     summary_version=1, acquisition_epoch=now, published_at=now, lid=1,
                     mapping_verified=True, channel_count=5, points=[], unit="rad/(m*s)",
-                    duration=10, metric_processing="scaled-ac-v1",
+                    duration=10, metric_processing="browser-fixture-scaled-ac-v1",
                     profile=dict(status="complete", start=0, end=10,
                                  channels=[0, 4, 8, None, 100, 104], values=[1, 2, 9, None, 3, 1]),
                     heatmap=dict(status="complete", channel_edges=[-2, 2, 6, 10, 98, 102, 106],

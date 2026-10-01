@@ -1414,3 +1414,9 @@ footer > span:first-child {
 
 .live-dot.is-demo { background: #ebcb8b; box-shadow: 0 0 0 4px #ebcb8b16; }
 .live-status .demo-source { flex-basis: 100%; margin: 0; color: #ebcb8b; font-size: 11px; overflow-wrap: anywhere; }
+
+.calm-controls { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:10px 14px; background:#2e3440; border-bottom:1px solid #434c5e; }
+.calm-controls label { display:flex; flex-direction:row; align-items:center; gap:8px; white-space:nowrap; }
+
+.calm-controls input[type=checkbox] { width:auto; }
+fieldset.color-controls { border:0; margin:0; min-width:0; }

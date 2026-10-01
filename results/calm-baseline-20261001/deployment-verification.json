@@ -1,0 +1,14 @@
+{
+  "baseline_id": "20261001T162737-3fa1d06a",
+  "status": "live",
+  "recording_id": 24365,
+  "qualified_channels": 25234,
+  "settings_preserved": true,
+  "legacy_http": 200,
+  "page_http": 200,
+  "overview_http": 200,
+  "map_signal_scores_match": true,
+  "rollback": "/home/inst/oistein/upgraded-guacamole/.local/calm-deploy-20261001/rollback.tgz",
+  "verified_at": 1790873356.6986153,
+  "files": 41
+}

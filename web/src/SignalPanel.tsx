@@ -1,3 +1,4 @@
+import CalmControls, { useCalm, type CalmPreference } from "./CalmControls";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Activity,
@@ -19,6 +20,7 @@ import {
   type Inspection,
   type Geography,
 } from "./types";
+const CalmSignalChart = lazy(() => import("./CalmSignalChart"));
 const Chart = lazy(() => import("./Chart"));
 const line = (
   x: number[] | string[],
@@ -57,6 +59,7 @@ export default function SignalPanel({
   inspection: Inspection;
   onInspection: (i: Inspection) => void;
 }) {
+  const [calmPreference, setCalmPreference] = useState<CalmPreference>("auto");
   const [source, setSource] = useState("archive"),
     [tab, setTab] = useState("waveform");
   const [start, setStart] = useState(0),
@@ -216,6 +219,8 @@ export default function SignalPanel({
       duration: Math.min(600, last - first),
     });
   }
+  const calmEnabled = useCalm(calmPreference, signal?.normalization);
+  const normalizedActivity = calmEnabled && ["rms", "variance", "heatmap", "peak", "band_rms"].includes(tab);
   const spatialMetric = tab === "rms" || tab === "variance";
   const metricFrame = signal ? Math.max(0, Math.min(
     signal.trend_time.length - 1,
@@ -430,6 +435,7 @@ export default function SignalPanel({
                 "waveform",
                 "rms",
                 "variance",
+                ...(calmEnabled ? ["peak", "band_rms"] : []),
                 "heatmap",
                 "spectrum",
                 "weather",
@@ -439,11 +445,12 @@ export default function SignalPanel({
                   className={tab === t ? "active" : ""}
                   onClick={() => setTab(t)}
                 >
-                  {t === "rms" ? "AC RMS" : t[0].toUpperCase() + t.slice(1)}
+                  {t === "band_rms" ? "Band RMS (1–10 Hz)" : t === "rms" ? "AC RMS" : t[0].toUpperCase() + t.slice(1)}
                 </button>
               ))}
             </div>
           </div>
+          <CalmControls preference={calmPreference} onChange={p => { setCalmPreference(p); if (p === "raw" && ["peak", "band_rms"].includes(tab)) setTab("rms"); }} data={signal?.normalization} />
           {error && (
             <div role="alert" className="inline-error">
               {error}
@@ -539,7 +546,7 @@ export default function SignalPanel({
           ) : signal ? (
             <>
               <Suspense fallback={<div className="empty">Loading charts…</div>}>
-                <Chart
+                {normalizedActivity ? <CalmSignalChart signal={signal} tab={tab} cursor={cursor} onZoom={zoom} /> : <Chart
                   onZoom={
                     ["waveform", "heatmap"].includes(tab)
                       ? zoom
@@ -613,7 +620,7 @@ export default function SignalPanel({
                             },
                           }
                   }
-                />
+                />}
               </Suspense>
               <div className="playback">
                 <span className="muted small">Recording playback · 2 s per file</span>

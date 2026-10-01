@@ -1,3 +1,8 @@
+import CalmControls, {
+  calmMetric,
+  useCalm,
+  type CalmPreference,
+} from "./CalmControls";
 import {
   lazy,
   Suspense,
@@ -39,6 +44,7 @@ export default function LiveMonitor({
     metric: MetricFrame | null;
     metricError: string;
   } | null>(null);
+  const [calmPreference, setCalmPreference] = useState<CalmPreference>("auto");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [clock, setClock] = useState(Date.now());
@@ -80,7 +86,7 @@ export default function LiveMonitor({
             metricError =
               "Live instrument mapping is unverified; signal locations are unavailable.";
           else {
-            const key = `${next.recording_id}:${next.frame ?? 0}:${lid}:${next.acquisition_epoch}`;
+            const key = `${next.recording_id}:${next.frame ?? 0}:${lid}:${next.acquisition_epoch}:${next.normalization?.baseline_id}`;
             try {
               metric =
                 cached?.key === key
@@ -96,6 +102,15 @@ export default function LiveMonitor({
                 metric.frame !== (next.frame ?? 0)
               )
                 throw new Error("Signal response does not match current file");
+              if (
+                metric.normalization?.baseline_id &&
+                next.normalization?.baseline_id &&
+                metric.normalization.baseline_id !==
+                  next.normalization.baseline_id
+              )
+                throw new Error(
+                  "Calm reference changed; waiting for the next capture",
+                );
               cached = { key, metric };
             } catch (e) {
               metric = null;
@@ -146,12 +161,16 @@ export default function LiveMonitor({
         publicationAge <= 30
       : snapshot?.status === "live" && age != null && age <= 30);
   const live = fresh ? snapshot! : null;
-  const displayed = fresh ? (current?.metric ?? null) : null;
+  const calmEnabled = useCalm(calmPreference, live?.normalization);
+  const displayed = useMemo(
+    () => calmMetric(fresh ? (current?.metric ?? null) : null, calmEnabled),
+    [fresh, current?.metric, calmEnabled],
+  );
   const scaleKey = live
     ? `${live.lid ?? displayed?.lid ?? live.points[0]?.lid}:${live.unit}:${live.metric_processing}`
     : "";
   const suggestedMax = Math.max(
-    displayed?.scale.max ??
+    current?.metric?.scale.max ??
       live?.profile?.values?.reduce<number>(
         (max, v) => Math.max(max, v ?? 0),
         0,
@@ -165,8 +184,11 @@ export default function LiveMonitor({
         prev?.key === scaleKey ? prev : { key: scaleKey, max: suggestedMax },
       );
   }, [scaleKey, suggestedMax]);
-  const maximum =
-    lockedScale?.key === scaleKey ? lockedScale.max : suggestedMax;
+  const maximum = calmEnabled
+    ? 10
+    : lockedScale?.key === scaleKey
+      ? lockedScale.max
+      : suggestedMax;
   const selectChannel = useCallback((channel: number) => {
     if (Number.isFinite(channel)) setSelectedChannel(channel);
   }, []);
@@ -253,6 +275,11 @@ export default function LiveMonitor({
         )}
         {error && <p role="alert">{error}</p>}
       </section>
+      <CalmControls
+        preference={calmPreference}
+        onChange={setCalmPreference}
+        data={live?.normalization}
+      />
       <div className="live-grid">
         <section className="live-map-panel" aria-label="Live network map">
           <Map
@@ -275,13 +302,15 @@ export default function LiveMonitor({
               {loading
                 ? "Loading current file…"
                 : displayed
-                  ? demo
-                    ? "Demo AC RMS · illustrative mapping · scale locked"
-                    : "AC RMS · amplitude colours · scale locked"
+                  ? calmEnabled
+                    ? "Departure from calm reference · colours 0–10"
+                    : demo
+                      ? "Demo AC RMS · illustrative mapping · scale locked"
+                      : "AC RMS · amplitude colours · scale locked"
                   : "Network assets · awaiting current signal"}
             </span>
             <button
-              disabled={!live}
+              disabled={!live || calmEnabled}
               onClick={() =>
                 setLockedScale({ key: scaleKey, max: suggestedMax })
               }
@@ -332,6 +361,7 @@ export default function LiveMonitor({
             }
           >
             <LiveCharts
+              normalized={calmEnabled}
               snapshot={live}
               maximum={maximum}
               selected={live ? selectedChannel : null}

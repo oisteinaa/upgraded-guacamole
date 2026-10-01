@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import CalmControls, { calmMetric, useCalm, type CalmPreference } from "./CalmControls";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -79,7 +80,10 @@ function App() {
     max: 1,
     log: false,
   });
+  const [calmPreference, setCalmPreference] = useState<CalmPreference>("auto");
   const [metricData, setMetricData] = useState<MetricFrame | null>(null);
+  const calmEnabled = useCalm(calmPreference, metricData?.normalization);
+  const displayMetric = useMemo(() => calmMetric(metricData, calmEnabled), [metricData, calmEnabled]);
   const [metricBusy, setMetricBusy] = useState(false),
     [metricError, setMetricError] = useState("");
   const [lid, setLid] = useState(0),
@@ -331,7 +335,7 @@ function App() {
   const currentChannel =
     selectedChannel === undefined
       ? null
-      : metricData?.data.features.find(
+      : displayMetric?.data.features.find(
           (f) => f.properties.recording_channel === selectedChannel,
         );
   const p =
@@ -340,6 +344,8 @@ function App() {
       : {
           ...selected?.properties,
           value: currentChannel?.properties.value ?? null,
+          raw_value: currentChannel?.properties.raw_value,
+          calm_median: currentChannel?.properties.calm_median,
         };
   return (
     <>
@@ -616,8 +622,8 @@ function App() {
             onSelect={selectAsset}
             onEvent={selectEvent}
             fibre={fibre}
-            metricData={metricData}
-            scale={scale}
+            metricData={displayMetric}
+            scale={calmEnabled ? { min: 0, max: 10, log: false } : scale}
             onChannel={(f) => {
               setSidebarTab("selection");
               detailRequest.current++;
@@ -662,14 +668,15 @@ function App() {
             classes={overview?.classes ?? []} count={locations.features.length}
             busy={mapBusy} error={mapError} range={mapRange}
             selectedOutside={!!event && !!selected && !locations.features.some(f => f.id === event.id)} />
+          <CalmControls preference={calmPreference} onChange={setCalmPreference} data={metricData?.normalization} />
           <MetricControls
             metric={metric}
             setMetric={setMetric}
             band={band}
             setBand={setBand}
-            scale={scale}
+            scale={calmEnabled ? { min: 0, max: 10, log: false } : scale}
             setScale={setScale}
-            data={metricData}
+            data={displayMetric}
             busy={metricBusy}
             error={metricError}
             inspection={inspection}
@@ -879,7 +886,8 @@ function App() {
                 <div>
                   <dt>Selected metric</dt>
                   <dd>
-                    {number(p.value)} {metricData?.unit}
+                    {number(p.value)} {displayMetric?.unit}
+                    {calmEnabled && <small>Raw {number(p.raw_value)} {metricData?.unit} · calm median {number(p.calm_median)}</small>}
                   </dd>
                 </div>
               </dl>

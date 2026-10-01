@@ -123,4 +123,6 @@ def read_stitched_signal(recording, channel, start, duration, points=1600, **kwa
     result['stitch_note']=f"{len(result['source_files'])} recording files · contiguous samples; boundaries within one sample treated as timestamp rounding."
     if result['truncated']:
         result['stitch_note']+=' Requested context limited by '+('; '.join(sorted(set(stops))) if stops else 'archive boundary')+'.'
+    from .calm import activity
+    result["normalization"] = activity(selected, result["heat_channels"], result["start"], result["end"], epoch)
     return result
