@@ -1,0 +1,4 @@
+-r requirements-gui.txt
+h5py>=3.10,<4
+numpy>=1.26,<3
+segyio>=1.9,<2

@@ -19,7 +19,7 @@ from .live_summary import profile_summary, recording_summary
 from .metrics import VERSION as METRIC_VERSION, fibre_positions, map_metrics, metric_frame
 from .signals import inspect_recording
 
-VERSION = "demo-v2"
+VERSION = "demo-v3"
 log = logging.getLogger(__name__)
 
 

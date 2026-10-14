@@ -22,6 +22,8 @@ from .signals import safe_path
 VERSION = "scaled-ac-v1"
 WINDOW_SECONDS = 10.0
 METRICS = ("ac_rms", "band_rms", "peak", "variance")
+# Geometry remains on the original grid when acquisition decimation changes.
+MAPPING_CHANNEL_STEP = 4
 _calculation_lock = Lock()
 
 
@@ -180,7 +182,7 @@ def fibre_positions(lid):
     previous = None
     for p in positions:
         # masteliste's stored spatial grid is four native interrogator channels.
-        if previous is None or p["channel"] - previous != 4:
+        if previous is None or p["channel"] - previous != MAPPING_CHANNEL_STEP:
             run = p["channel"]
         p["run"] = f"{lid}:{run}"
         previous = p["channel"]
@@ -229,7 +231,8 @@ def interpolation_regions(recording, positions):
         ):
             start, end, step = int(start), int(end), int(step)
             anchors = [p for p in positions if start <= p["channel"] <= end][:3]
-            if len(anchors) != 3 or step != 4 or anchors[0]["channel"] - start >= step:
+            if (len(anchors) != 3 or step <= 0 or step % MAPPING_CHANNEL_STEP
+                    or anchors[0]["channel"] - start >= MAPPING_CHANNEL_STEP):
                 continue
             if all(
                 p["distance"] is not None
@@ -240,7 +243,8 @@ def interpolation_regions(recording, positions):
                     {
                         "start": start,
                         "end": end,
-                        "step": step,
+                        "step": MAPPING_CHANNEL_STEP,
+                        "acquisition_step": step,
                         "native_spacing_m": spacing,
                         "evidence": "First three masteliste distances agree with HDF5 native spacing and ROI origin within 0.05 m",
                     }
@@ -318,6 +322,10 @@ def map_metrics(recording, lid, frame=0, metric="ac_rms", low=1.0, high=10.0, il
     regions = interpolation_regions(recording, positions)
     resolved, counts = resolve_positions(recording, positions, regions)
     columns = {channel: i for i, channel in enumerate(recording["channels"])}
+    # Derive display adjacency from the full recording, before geographic filtering.
+    # The minimum is conservative for mixed decimation: larger gaps never merge.
+    deltas = np.diff(sorted(columns))
+    channel_step = int(deltas.min()) if len(deltas) else None
     features = [
         {
             "type": "Feature",
@@ -328,6 +336,7 @@ def map_metrics(recording, lid, frame=0, metric="ac_rms", low=1.0, high=10.0, il
             },
             "properties": dict(
                 **p,
+                channel_step=channel_step,
                 value=float(result["values"][metric][columns[p["recording_channel"]]]),
             ),
         }

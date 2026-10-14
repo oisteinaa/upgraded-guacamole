@@ -10,12 +10,48 @@ import os
 from pathlib import Path
 import tempfile
 
+import h5py
 import numpy as np
 
 from .calm import VERSION, artifact_root, fingerprint, robust_fit, score
 from .db import rows
 from .metrics import (METRICS, metric_frame, fibre_positions, interpolation_regions,
                       resolve_positions, geographic_distance)
+
+
+def compatible_subset(source, target):
+    """Prove an exact channel subset after ROI-end trimming, never resample.
+
+    Used for an explicitly audited baseline projection, not automatic fallback.
+    Gauge, signal representation, instrument, ROI starts and decimation must match.
+    """
+    from .stitched_signals import configuration
+    from .signals import safe_path
+    before, after = configuration(source), configuration(target)
+    left, right = json.loads(before[-1]), json.loads(after[-1])
+    required = ['header/gaugeLength', 'header/instrumentSerial',
+                'demodSpec/roiStart', 'demodSpec/roiEnd', 'demodSpec/roiDec']
+    if any(k not in left or k not in right for k in required):
+        raise ValueError('Subset projection requires instrument, gauge and ROI metadata')
+    old_end = np.asarray(left.pop('demodSpec/roiEnd'))
+    new_end = np.asarray(right.pop('demodSpec/roiEnd'))
+    if (before[:3] != after[:3] or before[4:6] != after[4:6] or left != right
+            or old_end.shape != new_end.shape or np.any(new_end > old_end)):
+        raise ValueError('Subset projection requires identical signal settings and trimmed ROI ends')
+    lookup = {ch: i for i, ch in enumerate(source['channels'])}
+    if not target['channels'] or any(ch not in lookup for ch in target['channels']):
+        raise ValueError('Target channels must be an exact subset of source channel IDs')
+    columns = np.array([lookup[ch] for ch in target['channels']], dtype=int)
+    with h5py.File(safe_path(source['relative_path']), 'r') as a, h5py.File(safe_path(target['relative_path']), 'r') as b:
+        if 'cableSpec/sensorDistances' not in a or 'cableSpec/sensorDistances' not in b:
+            raise ValueError('Subset projection requires sensor distances')
+        distances = np.asarray(a['cableSpec/sensorDistances'][()])
+        expected = np.asarray(b['cableSpec/sensorDistances'][()])
+        if (distances.shape != (len(source['channels']),) or expected.shape != (len(columns),)
+                or not np.isfinite(expected).all()
+                or not np.allclose(distances[columns], expected, rtol=0, atol=1e-8)):
+            raise ValueError('Sensor distances differ for the requested channel subset')
+    return columns
 
 
 def weather_at(items, target, max_age=7200):
@@ -61,7 +97,11 @@ def finalize_manifest(manifest):
     fitted = []
     for config in manifest["configurations"].values():
         keys = {tuple(frame) for frame in config["fit_frames"]}
-        fitted.extend(source["epoch"] for source in config["sources"] if (source["path"], source["frame"]) in keys)
+        epochs = [source["epoch"] for source in config["sources"] if (source["path"], source["frame"]) in keys]
+        if epochs:
+            config["training_start"] = min(epochs)
+            config["training_end"] = max(epochs) + 10
+        fitted.extend(epochs)
     if fitted:
         manifest["training_start"] = min(fitted)
         manifest["training_end"] = max(fitted) + 10

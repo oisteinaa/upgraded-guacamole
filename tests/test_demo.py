@@ -1,5 +1,6 @@
 """Directory replay stays separate from genuine capture and database records."""
 import json
+import os
 from pathlib import Path
 import threading
 import time
@@ -20,6 +21,7 @@ def directory(tmp_path, monkeypatch):
     monkeypatch.setenv("DAS_METRIC_CACHE", str(tmp_path / "metrics"))
     monkeypatch.setenv("DAS_LIVE_SNAPSHOT", str(tmp_path / "snapshot.json"))
     monkeypatch.delenv("DAS_DEMO_DIR", raising=False)
+    monkeypatch.delenv("DAS_LIVE_ZMQ_BIND", raising=False)
     path = tmp_path / "example.hdf5"
     with h5py.File(path, "w") as f:
         f["data"] = np.random.default_rng(0).normal(size=(5000, 3))
@@ -66,7 +68,8 @@ def test_preparation_caches_without_verification_or_database_writes(directory, m
     assert result["demo_has_metric"] and result["detection"]["status"] == "disabled"
     assert result["heatmap"]["status"] == "complete"
     assert demo.prepare_file(path, 1, "test-mapping") == result and len(calls) == 1
-    path.touch()
+    stat = path.stat()
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
     changed = demo.prepare_file(path, 1, "test-mapping")
     assert changed["demo_token"] != result["demo_token"] and len(calls) == 2
     remapped = demo.prepare_file(path, 1, "new-mapping")

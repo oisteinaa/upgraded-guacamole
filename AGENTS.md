@@ -280,3 +280,33 @@ preserves original acquisition times, and labels all output Demo replay.
 Detection/event creation is disabled. The API and publisher are supervised
 children of `src.Mapui.launcher`; stopping the service stops both. Real capture
 and demo snapshots are separate. See `docs/map-app.md` for operation and checks.
+
+### Acquisition sampling change (2026-10-14)
+
+New server recordings have 12,612 explicit channels, `roiDec=[8,8]`, nominal
+8 m sampling (8.170401526 m actual), and gauge length 16.340803052 m. Native
+`header/dx` remains 1.0213001907746815 m. Historical files retain nominal 4 m
+sampling and gauge length 8.170401526 m. `masteliste` remains on its original
+four-native-channel grid; do not double its channel IDs or decimate its rows.
+The current observatory uses explicit file IDs, not `get_mastliste()` row indices.
+Mapping separates acquisition decimation from geometry adjacency, and display
+reduction derives spacing from each recording. Existing calm baselines do not
+match the new gauge/ROI configuration and require separate retraining; raw
+metrics remain available. See `docs/channel-mapping.md`.
+
+The observatory is currently receiving genuine live ZMQ notifications (the older
+directory-demo note describes an optional mode). Preserve `.local/map-server.env`
+and restart only the user `sensnet-observatory.service` when deploying.
+
+### New calm reference (2026-10-14)
+
+Bundle `20261014T113058-77c8a057-bundle` adds a baseline for the 8 m data and
+retains the original 4 m reference. It uses 4,320 sampled frames from October
+7–9, with unchanged calm-weather/coverage requirements. The October 13–14
+current-ROI search contained no qualifying calm frames. Earlier 8 m files have
+identical signal settings and current channel sensor distances; their four extra
+ROI-end channels are explicitly omitted by ID. No spatial resampling occurs.
+Current coverage is 12,610/12,612 channels; two boundary channels remain raw-only.
+The older 8 m range also retains its own reference (12,614/12,616 channels).
+Per-configuration fitting dates and provenance are preserved. See
+`docs/calm-baseline.md` and `results/calm-baseline-20261014/` for validation.

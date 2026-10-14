@@ -1,4 +1,6 @@
-presentations/
+# Local analysis, reports, exports and presentation packages
+/results/
+/presentations/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -125,7 +127,12 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
 .venv
+.venv-*/
 env/
 venv/
 ENV/
@@ -162,12 +169,44 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-*.hdf5
-src/weather/yr_cache.sqlite
+# DAS recordings, converted seismic data and derived arrays
+*.[hH]5
+*.[hH][dD][fF]5
+*.[sS][eE][gG][yY]
+*.[sS][gG][yY]
+*.[sS][eE][gG][dD]
+*.npy
+*.npz
+*.joblib
+*.partial
+
+# Local databases and database backups (keep SQL migrations tracked)
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.dump
+*.sql.gz
+
+# Generated deployment and export archives
+*.tar
+*.tar.gz
+*.tgz
+*.zip
 
 # Local investigation environment, copied database, recordings and build output
 .local/
-.venv-map/
-web/node_modules/
+node_modules/
 web/dist/
 web/test-results/
+web/playwright-report/
+*.tsbuildinfo
+
+# Editor and operating-system temporary files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~

@@ -10,6 +10,7 @@ from src.Mapui.metrics import (
     resolve_positions,
 )
 from src.Mapui.signals import inspect_recording, read_signal
+from src.Mapui import metrics
 
 
 def test_metrics_remove_dc_and_keep_units():
@@ -151,3 +152,47 @@ def test_acquisition_origin_proof_required(recorded):
     assert len(interpolation_regions(r, positions)) == 1
     positions[0]["distance"] = 0.0
     assert interpolation_regions(r, positions) == []
+
+
+@pytest.mark.parametrize("step", [4, 8])
+def test_acquisition_spacing_is_independent_of_mapping_grid(tmp_path, monkeypatch, step):
+    monkeypatch.setenv("DAS_ARCHIVE_ROOT", str(tmp_path))
+    monkeypatch.setenv("DAS_METRIC_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setenv("DAS_CALM_BASELINES", str(tmp_path / "no-baseline"))
+    path = tmp_path / "sampling.hdf5"
+    channels = list(range(0, 25, step)) + list(range(69000, 69025, step))
+    time = np.arange(1000) * .01
+    amplitudes = np.arange(1, len(channels) + 1)
+    with h5py.File(path, "w") as f:
+        f["data"] = 20 + np.sin(2 * np.pi * 5 * time[:, None]) * amplitudes
+        for key, value in dict(channels=channels, time=1000., dt=.01, dataScale=2.,
+                               unit="rad/(m*s)", gaugeLength=step * 2.,
+                               missingSamples=np.array([], dtype=int)).items():
+            f["header/" + key] = value
+        f["cableSpec/sensorDistances"] = [ch if ch < 69000 else ch - 69000 for ch in channels]
+        f["demodSpec/roiStart"] = [0, 69000]
+        f["demodSpec/roiEnd"] = [24, 69024]
+        f["demodSpec/roiDec"] = [step, step]
+    rec = inspect_recording(path)
+    rec.update(id=1, lid=1, processing="stored values × dataScale", time_verified=True)
+    positions = [dict(point(ch, run="1:0"), distance=ch) for ch in range(0, 25, 4)]
+    positions += [point(ch, lon=14 + (ch - 69003) * .00001) for ch in range(69003, 69024, 4)]
+    monkeypatch.setattr(metrics, "fibre_positions", lambda lid: positions)
+    result = metrics.map_metrics(rec, 1)
+    assert result["mapping"]["outside"] == 2
+    assert result["mapping"]["unresolved"] == 0
+    assert result["mapping"]["interpolated"] == (24 // step) - 1
+    assert all(r["step"] == 4 and r["acquisition_step"] == step for r in result["mapping"]["regions"])
+    for feature in result["data"]["features"]:
+        p = feature["properties"]
+        assert p["channel_step"] == step
+        assert p["value"] == pytest.approx(amplitudes[channels.index(p["recording_channel"])] * np.sqrt(2))
+        if p["mapping"] == "interpolated":
+            assert p["upper_channel"] - p["lower_channel"] == 4
+
+
+def test_eight_channel_acquisition_cannot_bridge_missing_geometry():
+    region = dict(start=69000, end=69024, step=4, acquisition_step=8, native_spacing_m=1)
+    resolved, counts = resolve_positions(
+        {"channels": [69008]}, [point(69003), point(69011)], [region])
+    assert not resolved and counts["gap"] == 1

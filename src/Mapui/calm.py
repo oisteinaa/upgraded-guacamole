@@ -74,7 +74,8 @@ def reference(recording, illustrative=False):
         if not np.array_equal(arrays["channels"], recording["channels"]):
             raise ValueError("Baseline channel identities differ")
         return {"status": "available", "baseline_id": meta["id"],
-                "training_start": meta["training_start"], "training_end": meta["training_end"],
+                "training_start": config.get("training_start", meta["training_start"]),
+                "training_end": config.get("training_end", meta["training_end"]),
                 "available_channels": int(np.count_nonzero(arrays["eligible"])),
                 "total_channels": len(recording["channels"]), "band": meta["band"],
                 "illustrative": illustrative, "configuration": key,

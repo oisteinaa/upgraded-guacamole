@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime, timezone
 
 import h5py
@@ -7,7 +8,7 @@ import pytest
 
 from src.Mapui import calm, metrics, stitched_signals
 from src.Mapui.signals import inspect_recording
-from src.Mapui.train_calm import weather_at, split_calm
+from src.Mapui.train_calm import weather_at, split_calm, finalize_manifest, compatible_subset
 
 
 def test_robust_backgrounds_outliers_and_floor():
@@ -114,8 +115,10 @@ def test_map_live_and_stitched_zoom_use_identical_source_frames(reference, monke
 def test_retraining_invalidates_reference_and_demo_identity(reference):
     before = calm.identity()
     path = calm.artifact_root() / "active.json"
+    stat = path.stat()
     data = json.loads(path.read_text()); data["id"] = "replacement"
     path.write_text(json.dumps(data))
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
     assert calm.identity() != before
 
 
@@ -128,3 +131,86 @@ def test_timestamp_rounding_does_not_show_previous_frame(reference):
 def test_missing_baseline_keeps_explicit_status(tmp_path, monkeypatch):
     monkeypatch.setenv("DAS_CALM_BASELINES", str(tmp_path))
     assert calm.reference({})[0]["status"] == "unavailable"
+
+
+@pytest.mark.parametrize("field,value", [("gaugeLength", 16.34), ("channels", [8, 16, 104])])
+def test_new_gauge_or_sampling_cannot_reuse_old_baseline(reference, field, value):
+    rec = reference[0]
+    path = stitched_signals.safe_path(rec["relative_path"])
+    with h5py.File(path, "a") as f:
+        if "header/" + field in f:
+            del f["header/" + field]
+        f["header/" + field] = value
+    rec.update(inspect_recording(path))
+    info, arrays = calm.reference(rec)
+    assert arrays is None
+    assert info["note"] == "No calm reference matches this acquisition configuration"
+
+
+def test_reference_uses_its_configuration_training_dates(reference):
+    path = calm.artifact_root() / "active.json"
+    manifest = json.loads(path.read_text())
+    config = manifest["configurations"][calm.fingerprint(reference[0])]
+    config.update(training_start=100, training_end=500)
+    stat = path.stat()
+    path.write_text(json.dumps(manifest))
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+    info, arrays = calm.reference(reference[0])
+    assert arrays is not None
+    assert (info["training_start"], info["training_end"]) == (100, 500)
+
+
+def test_manifest_retains_separate_fitting_dates_for_each_configuration():
+    def config(path, epoch):
+        return dict(fit_frames=[[path, 0]], sources=[dict(path=path, frame=0, epoch=epoch),
+                                                    dict(path=path, frame=1, epoch=epoch+10)])
+    manifest = dict(training_start=0, training_end=5000,
+                    configurations={"old": config("old.hdf5", 100), "new": config("new.hdf5", 1000)})
+    result = finalize_manifest(manifest)
+    assert (result["training_start"], result["training_end"]) == (100, 1010)
+    assert result["configurations"]["old"]["training_end"] == 110
+    assert result["configurations"]["new"]["training_start"] == 1000
+    assert (result["requested_start"], result["requested_end"]) == (0, 5000)
+
+
+@pytest.fixture
+def trimmed_recordings(tmp_path, monkeypatch):
+    monkeypatch.setenv('DAS_ARCHIVE_ROOT', str(tmp_path))
+    records = []
+    for name, channels in [('source', [0, 8, 16, 100, 108, 116]), ('target', [0, 8, 100, 108])]:
+        path = tmp_path / (name + '.hdf5')
+        with h5py.File(path, 'w') as f:
+            f['data'] = np.zeros((10, len(channels)))
+            for key, value in dict(channels=channels, time=1000., dt=.002, unit='rad/(m*s)', dataScale=1.,
+                                   gaugeLength=16., instrumentSerial=152, missingSamples=np.array([], dtype=int)).items():
+                f['header/' + key] = value
+            f['demodSpec/roiStart'] = [0, 100]
+            f['demodSpec/roiEnd'] = [16, 116] if name == 'source' else [8, 108]
+            f['demodSpec/roiDec'] = [8, 8]
+            f['cableSpec/sensorDistances'] = [ch if ch < 100 else ch-100 for ch in channels]
+        rec = inspect_recording(path)
+        rec.update(lid=1, processing='stored values × dataScale')
+        records.append(rec)
+    return records
+
+
+def test_baseline_projection_selects_exact_channel_ids_across_roi_gaps(trimmed_recordings):
+    source, target = trimmed_recordings
+    assert compatible_subset(source, target).tolist() == [0, 1, 3, 4]
+
+
+@pytest.mark.parametrize('field,value', [
+    ('header/gaugeLength', 8.), ('header/dataScale', 2.), ('header/instrumentSerial', 153),
+    ('demodSpec/roiDec', [4, 4]), ('demodSpec/roiStart', [1, 100]),
+    ('demodSpec/roiEnd', [24, 108]), ('header/channels', [0, 8, 100, 112]),
+    ('cableSpec/sensorDistances', [0., 8., 0., 9.]),
+])
+def test_baseline_projection_rejects_other_acquisition_changes(trimmed_recordings, field, value):
+    source, target = trimmed_recordings
+    path = stitched_signals.safe_path(target['relative_path'])
+    with h5py.File(path, 'a') as f:
+        del f[field]
+        f[field] = value
+    target.update(inspect_recording(path))
+    with pytest.raises(ValueError):
+        compatible_subset(source, target)

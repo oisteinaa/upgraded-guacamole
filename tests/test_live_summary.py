@@ -1,5 +1,6 @@
 """Live summaries use full samples, retain gaps and never imply a class."""
 import json
+import os
 
 import h5py
 import numpy as np
@@ -48,8 +49,9 @@ def test_streamed_heatmap_matches_direct_computation(capture):
     assert bounds[-1] == len(scaled) and len(set(np.diff(bounds))) == 2
 
 
-def test_profile_preserves_peaks_and_explicit_gaps():
-    channels = list(range(0, 8000, 4)) + [9000, 9004]
+@pytest.mark.parametrize("step", [4, 8])
+def test_profile_preserves_peaks_and_explicit_gaps(step):
+    channels = list(range(0, 8000, step)) + [9000, 9000 + step]
     values = np.ones(len(channels))
     values[431] = 100
     values[433] = 0
@@ -62,7 +64,8 @@ def test_profile_preserves_peaks_and_explicit_gaps():
 
 def test_changed_capture_rejected(capture):
     rec, _, path = capture
-    path.touch()
+    stat = path.stat()
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
     with pytest.raises(ValueError, match="changed"):
         recording_summary(rec)
 

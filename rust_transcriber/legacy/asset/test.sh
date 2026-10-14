@@ -1,0 +1,1 @@
+cargo run --release --bin rust_transcriber -- --nodeid 12040 --toffset 62 --declination 3.2  --rline  1010 --rstation 1002 --depth 110.2 --sfd /raid1/VENATOR/SEGD_SHOTS --nav-format p111 --segy-file-format segd --ns 2500 --ssd /raid1/VENATOR/NAVIGATION/source

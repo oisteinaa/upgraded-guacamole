@@ -43,7 +43,9 @@ export function reduceFibre(
       continue;
     }
     const next = `${f.properties.run}:${Math.floor(p.x / cell)}:${Math.floor(p.y / cell)}`;
-    if (next !== key || previous === null || ch - previous !== 4) flush();
+    // Older API/cache payloads used the original four-channel acquisition grid.
+    const step = f.properties.channel_step ?? 4;
+    if (next !== key || previous === null || Math.abs(ch - previous) !== step) flush();
     key = next;
     bucket.push(f);
     previous = ch;

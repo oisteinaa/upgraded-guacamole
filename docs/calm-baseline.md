@@ -116,3 +116,38 @@ Tests: `tests/test_calm.py`, existing metric/live/stitched/demo tests, the front
 build and `scripts/check_calm_browser.py`. The browser check uses isolated fixtures
 and exercises raw/calibrated switching, gaps, saturation, signal trends and mobile
 layout without database writes.
+
+## 8 m reference: 2026-10-14
+
+Bundle `20261014T113058-77c8a057-bundle` retains the original 4 m reference and
+adds references for both 8 m acquisition ranges. Training sampled 4,320 frames
+from October 7–9 with the original wind/temperature and coverage requirements.
+Actual fitting coverage is October 7 10:13 UTC through October 9 13:59 UTC.
+The current range, which started October 13, had no qualifying calm frames in
+the initial 27-hour search; that candidate was not activated.
+
+The earlier 8 m files have the same instrument, gauge length, sample interval,
+units, scaling, sensitivities, unwrapping range, ROI starts and decimation as the
+current files. Only the ROI ends were shortened. An explicit projection retains
+the current channel IDs and identical sensor distances, dropping source channels
+68016, 68024, 101880 and 101888. No signal resampling or baseline interpolation is
+performed. `train_calm.compatible_subset()` checks this narrow compatibility;
+runtime scoring still requires an exact configuration fingerprint.
+
+12,610 of the current 12,612 channels qualify, across all 16 assigned forecast
+regions. The two channels without approved map positions remain unavailable.
+The parent 8 m range qualifies 12,614 of 12,616 channels. Each station region
+uses later hourly blocks for validation; all eligible metric scales are positive.
+The bundle records separate fitting dates and source manifests for each
+configuration so older recordings retain their original reference and dates.
+
+On the parent acquisition grid, 18.20% of held-out calm AC RMS scores exceeded
+3, versus 31.69% for windy periods; at score 6 these were 8.45% and 15.91%.
+These are descriptive distributions, not false-alarm or detection accuracy.
+The retained channels inherit unchanged per-channel fits; these aggregate
+validation rates describe the parent grid. No event threshold is activated.
+
+Audit and deployment evidence: `results/calm-baseline-20261014/`. Source-file
+identities, forecast availability, chronological validation splits and the exact
+channel projection were checked before activation. The old active manifest is
+retained in the deployment rollback copy.

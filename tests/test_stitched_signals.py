@@ -65,3 +65,17 @@ def test_changed_neighbor_is_not_used(recordings):
     recordings[2]['mtime_ns']+=1
     r=stitch.read_stitched_signal(recordings[1],100,0,20)
     assert r['end']==10 and 'changed' in r['stitch_note']
+
+
+@pytest.mark.parametrize('field,value', [('gaugeLength',16.34), ('channels',[100,108])])
+def test_stitch_stops_at_gauge_or_spacing_change(recordings, field, value):
+    rec = recordings[2]
+    path = stitch.safe_path(rec['relative_path'])
+    with h5py.File(path, 'a') as f:
+        if 'header/' + field in f:
+            del f['header/' + field]
+        f['header/' + field] = value
+    rec.update(inspect_recording(path))
+    result = stitch.read_stitched_signal(recordings[1],100,0,20)
+    assert result['end'] == 10 and result['truncated']
+    assert 'Acquisition configuration changes' in result['stitch_note']

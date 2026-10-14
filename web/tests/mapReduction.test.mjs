@@ -25,3 +25,10 @@ test('linear and logarithmic scales are stable and saturate',()=>{
  assert.equal(colorPosition(50,0,100,false),.5);assert.equal(colorPosition(1000,0,100,false),1);
  assert.equal(colorPosition(10,1,100,true),.5);assert.equal(colorPosition(0,1,100,true),0);
 });
+test('eight-channel sampling reduces extrema without merging gaps or runs',()=>{
+ const points=[feature(0,5),feature(8,1),feature(16,100),feature(24,2),feature(40,3),feature(48,4,'1:48')];
+ for (const f of points) f.properties.channel_step=8;
+ const out=reduceFibre(points,project,100,100,6);
+ assert.deepEqual(out.map(f=>f.id),[8,16,40,48]);
+ assert.deepEqual(out.map(f=>f.properties.bucket_count),[4,4,1,1]);
+});

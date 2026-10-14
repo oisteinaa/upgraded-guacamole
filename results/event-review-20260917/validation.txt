@@ -1,1 +1,0 @@
-Four shortlist candidates: source slices reread; all signal features independently recomputed and matched (rtol=1e-10). Labels blank and unverified.

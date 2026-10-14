@@ -29,6 +29,32 @@ these counts, provenance, rejected gaps and absent origin evidence. The database
 mapping remains unchanged. Mast-span straight lines are never substituted for
 fibre geometry, and event-limit group names are not used as geographic evidence.
 
+## New acquisition spacing (2026-10-14)
+
+Incoming files now contain 12,612 channels with `roiDec=[8,8]`, ROI bounds
+0–68008 and 69000–101872. Inspected header values are native `dx` =
+1.0213001907746815 m, sensor spacing = 8.170401526 m and gauge length =
+16.340803052 m. Older files use spacing 4.085200763 m and gauge length
+8.170401526 m. Gauge length and sample spacing are separate quantities.
+
+The stored geometry still uses four native channels between adjacent positions;
+it must not be decimated or have its channel IDs multiplied by two. Origin checks
+accept acquisition steps that are positive multiples of that geometry step.
+Coordinate interpolation still requires adjacent **four-channel geometry**
+neighbours, regardless of the recording step. Map display buckets use the minimum
+channel step from the complete recording and retain separate geometry runs, so
+8-channel files reduce correctly without joining excluded loops. Mixed steps are
+handled conservatively in display reduction. Demo caches are versioned to discard
+previous map results. Signal metrics continue using explicit file channel IDs and
+`dataScale`, with no extra factor of two or spatial resampling.
+
+Both spacings can coexist in the archive. Stitching stops at changes in channel
+IDs, ROI configuration or gauge length. The old calm reference cannot be applied
+to the new acquisition configuration: raw metrics remain available and calm
+scores require a separately trained and validated reference. The legacy
+`sensnetlib.get_mastliste()` helper is not used by the observatory capture/map
+pipeline and its row-based selection is not suitable for these files.
+
 Discovery candidates in the event queue now use their validated source channel
 blocks for geographic display independently of clock verification. With a single
 configured DAS line and no recording lid, this requires the header ROI origin
