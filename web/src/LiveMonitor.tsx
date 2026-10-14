@@ -1,3 +1,4 @@
+import { CALM_COLOR_MAX } from "./calmScale";
 import CalmControls, {
   calmMetric,
   useCalm,
@@ -185,7 +186,7 @@ export default function LiveMonitor({
       );
   }, [scaleKey, suggestedMax]);
   const maximum = calmEnabled
-    ? 10
+    ? CALM_COLOR_MAX
     : lockedScale?.key === scaleKey
       ? lockedScale.max
       : suggestedMax;
@@ -303,7 +304,7 @@ export default function LiveMonitor({
                 ? "Loading current file…"
                 : displayed
                   ? calmEnabled
-                    ? "Departure from calm reference · colours 0–10"
+                    ? `Departure from calm reference · colours 0–${CALM_COLOR_MAX}`
                     : demo
                       ? "Demo AC RMS · illustrative mapping · scale locked"
                       : "AC RMS · amplitude colours · scale locked"
@@ -362,6 +363,7 @@ export default function LiveMonitor({
           >
             <LiveCharts
               normalized={calmEnabled}
+              geography={live ? current?.metric : null}
               snapshot={live}
               maximum={maximum}
               selected={live ? selectedChannel : null}

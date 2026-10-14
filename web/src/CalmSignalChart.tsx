@@ -1,3 +1,4 @@
+import { CALM_COLOR_MAX } from "./calmScale";
 import { useState } from "react";
 import Chart from "./Chart";
 import { type Signal, type MetricName, number } from "./types";
@@ -71,7 +72,7 @@ export default function CalmSignalChart({
             n.times!.map((_, f) => custom(f, c)),
           ),
           zmin: 0,
-          zmax: 10,
+          zmax: CALM_COLOR_MAX,
           hoverongaps: false,
           connectgaps: false,
           colorscale: [

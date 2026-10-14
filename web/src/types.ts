@@ -219,6 +219,7 @@ export type MetricFrame = {
   data: Collection;
   scale: { min: number; max: number };
   mapping: {
+    regions?: { start: number; end: number }[];
     status: string;
     matched: number;
     recording_channels: number;

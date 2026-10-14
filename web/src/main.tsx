@@ -1,3 +1,4 @@
+import { CALM_COLOR_MAX } from "./calmScale";
 import CalmControls, { calmMetric, useCalm, type CalmPreference } from "./CalmControls";
 import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createRoot } from "react-dom/client";
@@ -623,7 +624,7 @@ function App() {
             onEvent={selectEvent}
             fibre={fibre}
             metricData={displayMetric}
-            scale={calmEnabled ? { min: 0, max: 10, log: false } : scale}
+            scale={calmEnabled ? { min: 0, max: CALM_COLOR_MAX, log: false } : scale}
             onChannel={(f) => {
               setSidebarTab("selection");
               detailRequest.current++;
@@ -674,7 +675,7 @@ function App() {
             setMetric={setMetric}
             band={band}
             setBand={setBand}
-            scale={calmEnabled ? { min: 0, max: 10, log: false } : scale}
+            scale={calmEnabled ? { min: 0, max: CALM_COLOR_MAX, log: false } : scale}
             setScale={setScale}
             data={displayMetric}
             busy={metricBusy}

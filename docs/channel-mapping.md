@@ -73,3 +73,22 @@ Server candidate #115850 maps header channel 69832 between stored channels
 nearest inventory masts are R14 M197 (~969 m) and R06 M1 (~997 m). Do not invent
 a connection between those routes. All five server candidates now have map
 markers; route filters include candidates whose blocks intersect inventory spans.
+
+## Live chart direction (2026-10-14)
+
+The two Live monitor activity charts display acquisition regions in south-to-north
+route order. Each region is oriented using the latitude of its first and last
+mapped native channels, then regions are ordered by their southern endpoint.
+Within a region, native cable order is retained through bends; individual points
+are not sorted by latitude. For the current recording this puts channels
+101872 down to 69000 first, followed by 0 up to 68008. Older 4 m recordings use
+their own ROI bounds. This display order is inferred from mapped endpoints, not
+a new verified physical connection between regions.
+
+The x-axis ticks show original channel IDs in this order. A blank spacer separates
+regions; it has no distance meaning. The axis is not cumulative geographic or
+cable distance. Existing profile gaps and missing calm scores remain breaks;
+heatmap bins are moved intact, retaining values, peak channel identities and
+original widths. Hover, click selection and highlights retain native IDs in raw
+and calm modes. When mapped acquisition regions cannot establish direction, the
+charts retain channel order with an explicit geographic-order-unavailable label.

@@ -1,3 +1,4 @@
+import { CALM_COLOR_MAX } from "./calmScale";
 import { number, utcTime, type MetricFrame, type Normalization } from "./types";
 
 export type CalmPreference = "auto" | "raw" | "calm";
@@ -13,7 +14,7 @@ export function calmMetric(
   return {
     ...frame,
     unit: "calm score",
-    scale: { min: 0, max: 10 },
+    scale: { min: 0, max: CALM_COLOR_MAX },
     data: {
       ...frame.data,
       features: frame.data.features
@@ -57,7 +58,7 @@ export default function CalmControls({
         {data?.available_channels ? (
           <>
             {enabled
-              ? "Departure from calm reference · colours 0–10 · "
+              ? `Departure from calm reference · colours 0–${CALM_COLOR_MAX} · `
               : "Calm reference available · "}
             {number(data.available_channels)}/{number(data.total_channels)}{" "}
             channels
