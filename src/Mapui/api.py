@@ -3,7 +3,7 @@
 import logging
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -431,6 +431,23 @@ def recordings():
     return rows("""SELECT id,relative_path,acquisition_epoch,dt,samples,unit,lid,time_verified,mapping_verified,
                   processing,cardinality(channels) AS channel_count,channels[1] AS first_channel
                   FROM das_recordings ORDER BY acquisition_epoch DESC LIMIT 500""")
+
+
+@app.get("/api/recording-browser")
+def recording_browser(day: date | None = None, hour: int | None = Query(None, ge=0, le=23),
+                      offset: int = Query(0, ge=0), limit: int = Query(200, ge=1, le=500)):
+    from .recording_browser import browse
+    return JSONResponse(browse(day.isoformat() if day else None, hour, offset, limit),
+                        headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/recordings/{recording_id}")
+def recording_metadata(recording_id: int):
+    from .recording_browser import FIELDS, availability
+    found = rows(f"SELECT {FIELDS} FROM das_recordings WHERE id=%s", (recording_id,))
+    if not found:
+        raise HTTPException(404, "Recording not found")
+    return JSONResponse(availability(found)[0], headers={"Cache-Control": "no-store"})
 
 
 def get_recording(recording_id):

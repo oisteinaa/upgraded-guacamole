@@ -76,6 +76,11 @@ def publish_recording(recording_id, replay=False, rules=None, legacy_timezone=No
     }
     from .calm import live_activity
     payload["normalization"] = live_activity(recording)
+    from .live_history import recording_history
+    try:
+        payload["history_frames"] = recording_history(recording)
+    except (OSError, ValueError, KeyError) as exc:
+        payload["history_note"] = str(exc)
     eligible = recording["time_verified"] and recording["mapping_verified"] and recording["lid"] is not None
     if rules is not None and not eligible:
         payload["detection"] = {"status": "unavailable", "note": "Detection requires verified acquisition time and instrument/channel mapping"}
@@ -103,6 +108,18 @@ def publish_recording(recording_id, replay=False, rules=None, legacy_timezone=No
 def write_snapshot(payload):
     target = snapshot_path()
     target.parent.mkdir(parents=True, exist_ok=True)
+    payload = dict(payload)
+    frames = payload.pop("history_frames", None)
+    if frames is not None:
+        from .live_history import merge_history
+        try:
+            stored = json.loads(target.read_text())
+            previous = stored.get("history")
+            if payload.get("demo") and payload.get("acquisition_epoch", 0) < stored.get("acquisition_epoch", 0):
+                previous = None
+        except (OSError, ValueError):
+            previous = None
+        payload["history"] = merge_history(previous, frames)
     with tempfile.NamedTemporaryFile(mode="w", dir=target.parent, delete=False) as f:
         json.dump(payload, f, allow_nan=False)
         temporary = f.name

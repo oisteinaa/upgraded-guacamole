@@ -196,3 +196,19 @@ def test_eight_channel_acquisition_cannot_bridge_missing_geometry():
     resolved, counts = resolve_positions(
         {"channels": [69008]}, [point(69003), point(69011)], [region])
     assert not resolved and counts["gap"] == 1
+
+@pytest.mark.parametrize('samples,complete', [(4902, True), (4901, True), (4900, False)])
+def test_nominal_ten_second_file_accepts_only_one_sample_shortfall(recorded, samples, complete):
+    path, _ = recorded
+    data = np.sin(np.arange(samples)[:, None] * .1) * np.array([[1., 3.]])
+    with h5py.File(path, 'r+') as f:
+        del f['data']
+        f['data'] = data
+        f['header/dt'][()] = .00204
+    rec = inspect_recording(path)
+    frame = metric_frame(rec, 0)
+    assert frame['complete'] is complete
+    assert frame['sample_shortfall'] == 4902 - samples
+    assert frame['stop_sample'] == samples
+    assert frame['actual_duration'] == pytest.approx(samples * .00204)
+    np.testing.assert_allclose(frame['values']['ac_rms'], np.std(data, axis=0))

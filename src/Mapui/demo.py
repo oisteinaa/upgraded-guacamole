@@ -19,7 +19,7 @@ from .live_summary import profile_summary, recording_summary
 from .metrics import VERSION as METRIC_VERSION, fibre_positions, map_metrics, metric_frame
 from .signals import inspect_recording
 
-VERSION = "demo-v3"
+VERSION = "demo-v5"
 log = logging.getLogger(__name__)
 
 
@@ -108,6 +108,8 @@ def prepare_file(path, lid, mapping_fingerprint):
         "demo_mapping_note": mapping_note,
         "detection": {"status": "disabled", "note": "Detection is disabled during demo replay. No events are created."},
     }
+    from .live_history import recording_history
+    result["history_frames"] = recording_history(recording, illustrative=True)
     after = path.stat()
     if (after.st_size, after.st_mtime_ns) != (stat.st_size, stat.st_mtime_ns):
         raise ValueError("Recording changed during demo preparation")

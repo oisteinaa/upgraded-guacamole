@@ -1,3 +1,4 @@
+import { historyHeatmap } from "./activityHistory";
 import { memo, useMemo } from "react";
 import type { Data, Layout } from "plotly.js";
 import Chart from "./Chart";
@@ -32,7 +33,7 @@ export default memo(function LiveCharts({
 }) {
   const { profileData, heatData, profileLayout, heatLayout } = useMemo(() => {
     const p = normalized ? snapshot?.normalization?.profile : snapshot?.profile,
-      h = normalized ? snapshot?.normalization?.heatmap : snapshot?.heatmap;
+      h = historyHeatmap(snapshot?.history, normalized);
     const sections = geographicSections(
       geography?.mapping.regions ?? [],
       geography?.data.features ?? [],
@@ -92,7 +93,7 @@ export default memo(function LiveCharts({
             },
           ];
     const common: Partial<Layout> = {
-      margin: { l: 56, r: 15, t: 8, b: 65 },
+      margin: { l: 72, r: 15, t: 8, b: 65 },
       shapes,
       uirevision: `${snapshot?.lid}-${snapshot?.unit}-${sections.map((s) => `${s.start}:${s.end}`).join(",")}`,
       hovermode: "closest",
@@ -161,11 +162,25 @@ export default memo(function LiveCharts({
                 ? h.peak_channels?.map((row, r) =>
                     (heat?.indices ?? row.map((_, i) => i)).map((c) =>
                       c == null
-                        ? [null, null, null]
-                        : [row[c], h.raw?.[r][c], h.medians?.[r][c]],
+                        ? [null, null, null, null]
+                        : [
+                            row[c],
+                            h.raw?.[r][c],
+                            h.medians?.[r][c],
+                            new Date(h.time_edges![r] * 1000).toISOString(),
+                          ],
                     ),
                   )
-                : heatRows(h.peak_channels)) as any,
+                : h.peak_channels?.map((row, r) =>
+                    (heat?.indices ?? row.map((_, i) => i)).map((c) =>
+                      c == null
+                        ? [null, null]
+                        : [
+                            row[c],
+                            new Date(h.time_edges![r] * 1000).toISOString(),
+                          ],
+                    ),
+                  )) as any,
               colorscale: colors,
               zmin: 0,
               zmax: maximum,
@@ -173,8 +188,8 @@ export default memo(function LiveCharts({
               connectgaps: false,
               showscale: false,
               hovertemplate: normalized
-                ? "Peak channel %{customdata[0]}<br>Time %{y:.3f} s<br>Calm score %{z:.4g}<br>Raw %{customdata[1]:.4g}<br>Median %{customdata[2]:.4g}<extra></extra>"
-                : "Peak channel %{customdata}<br>Time %{y:.3f} s<br>Max AC RMS %{z:.4g}<extra></extra>",
+                ? "Peak channel %{customdata[0]}<br>Frame %{customdata[3]}<br>Calm score %{z:.4g}<br>Raw %{customdata[1]:.4g}<br>Median %{customdata[2]:.4g}<extra></extra>"
+                : "Peak channel %{customdata[0]}<br>Frame %{customdata[1]}<br>Max AC RMS %{z:.4g}<extra></extra>",
             },
           ]
         : [];
@@ -191,17 +206,35 @@ export default memo(function LiveCharts({
       } as Partial<Layout>,
       heatLayout: {
         ...common,
-        yaxis: { title: { text: "File time (s)" }, gridcolor: "#3b4252" },
+        yaxis: {
+          title: { text: "Time (UTC)" },
+          gridcolor: "#3b4252",
+          ...(h?.time_edges?.length
+            ? (() => {
+                const end = h.time_edges[h.time_edges.length - 1];
+                const ticks: number[] = [];
+                for (
+                  let t = Math.ceil((end - 900) / 180) * 180;
+                  t <= end;
+                  t += 180
+                )
+                  ticks.push(t);
+                return {
+                  range: [end - 900, end],
+                  tickmode: "array" as const,
+                  tickvals: ticks,
+                  ticktext: ticks.map((t) =>
+                    new Date(t * 1000).toISOString().slice(11, 16),
+                  ),
+                };
+              })()
+            : {}),
+        },
       } as Partial<Layout>,
     };
   }, [snapshot, geography, maximum, selected, normalized]);
-  const h = normalized ? snapshot?.normalization?.heatmap : snapshot?.heatmap,
+  const h = historyHeatmap(snapshot?.history, normalized),
     p = normalized ? snapshot?.normalization?.profile : snapshot?.profile;
-  const edges = h?.time_edges;
-  const resolution =
-    edges && edges.length > 1
-      ? (edges[edges.length - 1] - edges[0]) / (edges.length - 1)
-      : null;
   return (
     <>
       <section className="live-card" aria-label="Activity along the fibre">
@@ -235,16 +268,21 @@ export default memo(function LiveCharts({
           </div>
         )}
       </section>
-      <section className="live-card" aria-label="Activity through the file">
+      <section
+        className="live-card"
+        aria-label="Activity over the last 15 minutes"
+      >
         <header>
-          <h2>Activity through the file</h2>
-          <span>WHOLE FILE</span>
+          <h2>Activity over the last 15 minutes</h2>
+          <span>15 MINUTES</span>
         </header>
         <p className="live-chart-caption" title={h?.aggregation}>
           {normalized
-            ? "Maximum calm score per ten-second frame/channel bin"
-            : "Maximum AC RMS per time/channel bin"}
-          {resolution != null ? ` · ≈${number(resolution)} s/bin` : ""}
+            ? "One row per 10 s · maximum calm score per channel bin"
+            : "One row per 10 s · maximum AC RMS per channel bin"}
+          {snapshot?.history?.rows.length
+            ? ` · ${snapshot.history.rows.length} frames · newest at top`
+            : ""}
         </p>
         {heatData.length ? (
           <Chart
@@ -264,7 +302,7 @@ export default memo(function LiveCharts({
           <div className="live-empty">
             {h?.note ??
               (snapshot
-                ? "Heatmap unavailable for this capture"
+                ? "Collecting 10-second activity frames…"
                 : "Waiting for current live signal")}
           </div>
         )}

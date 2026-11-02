@@ -493,3 +493,29 @@ loop wraparound, invalid/empty files, explicit demo status and metric API gating
 `scripts/check_demo_browser.py` checks a real running demo without injecting data;
 set `DAS_BROWSER_URL` to the server URL to verify deployment. Screenshots are saved
 under `.local/screenshots/demo-monitor/`.
+
+### Rolling live activity history (2026-10-14)
+
+The lower Live monitor chart retains the last 15 minutes of acquired activity,
+with one row per complete nominal ten-second source frame (sample-rounded).
+Newest frames are at the top; the vertical labels are acquisition UTC time.
+Each cell retains the maximum channel value within its spatial bin. Raw mode
+uses AC RMS computed across the same full frame as the calm normalization;
+it does not take a maximum of short-window RMS values. Raw and calm maxima can
+belong to different channels, and hover/click data preserve each actual peak ID.
+
+History is bounded to 900 acquisition seconds / 92 frames and saved atomically
+inside the file-backed live snapshot. It survives browser refreshes and service
+restarts. It starts collecting on deployment; earlier files are not automatically
+backfilled. Missing intervals remain blank and partial frames are omitted.
+Repeated publication of the same frame does not add rows. Acquisition configuration
+or baseline changes start a new history; replay history is separate and resets
+when its acquisition clock loops backwards. No database rows or schema change.
+The existing south-to-north axis and 0–50 calm colour scale are retained.
+
+Live frame boundaries tolerate at most one sample of timestamp overlap or gap.
+These boundaries share a display edge; stored acquisition timestamps and sample
+values remain unchanged. A nominal ten-second frame may also contain one fewer
+sample (at least 1,000 samples per nominal frame, limiting the duration difference
+to 0.1%). Its metrics use all actual samples without padding or resampling.
+Larger overlaps remain rejected and genuine missing intervals remain blank.
