@@ -3,7 +3,7 @@
 import logging
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -20,6 +20,8 @@ from .signals import archive_root, read_signal
 from .stitched_signals import read_stitched_signal
 
 app = FastAPI(title="Sensnet Cable Observatory", version="1.0.0")
+from .reports import router as reports_router
+app.include_router(reports_router)
 app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=3)
 
 
@@ -433,6 +435,23 @@ def recordings():
                   FROM das_recordings ORDER BY acquisition_epoch DESC LIMIT 500""")
 
 
+@app.get("/api/recording-browser")
+def recording_browser(day: date | None = None, hour: int | None = Query(None, ge=0, le=23),
+                      offset: int = Query(0, ge=0), limit: int = Query(200, ge=1, le=500)):
+    from .recording_browser import browse
+    return JSONResponse(browse(day.isoformat() if day else None, hour, offset, limit),
+                        headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/recordings/{recording_id}")
+def recording_metadata(recording_id: int):
+    from .recording_browser import FIELDS, availability
+    found = rows(f"SELECT {FIELDS} FROM das_recordings WHERE id=%s", (recording_id,))
+    if not found:
+        raise HTTPException(404, "Recording not found")
+    return JSONResponse(availability(found)[0], headers={"Cache-Control": "no-store"})
+
+
 def get_recording(recording_id):
     found = rows("SELECT * FROM das_recordings WHERE id=%s", (recording_id,))
     if not found:
@@ -620,10 +639,11 @@ def weather(
 
 
 @app.get("/api/live")
-def live():
+def live(compact: bool = False, history_key: str | None = None,
+         history_after: float | None = Query(None, allow_inf_nan=False)):
     from .live import load_snapshot
 
-    return load_snapshot()
+    return load_snapshot(compact=compact, history_key=history_key, history_after=history_after)
 
 
 @app.get("/api/demo/metrics/{token}")

@@ -1,0 +1,11 @@
+CREATE TABLE event_classes(classid smallint PRIMARY KEY,name varchar(32) UNIQUE NOT NULL);
+INSERT INTO event_classes VALUES (1,'Normal Operations'),(2,'Ice Loading'),(3,'Wind Galloping'),(4,'External Interference');
+CREATE TABLE masts(id integer PRIMARY KEY,route text,mast text,latitude float8,longitude float8);
+INSERT INTO masts VALUES (1,'R06','M1',68,14);
+CREATE TABLE das_recordings(id bigserial PRIMARY KEY);
+INSERT INTO das_recordings DEFAULT VALUES;
+CREATE TABLE event_data_types(data_type integer PRIMARY KEY,name text);
+INSERT INTO event_data_types VALUES (1,'rms');
+CREATE TABLE events(id serial PRIMARY KEY,time timestamp,type smallint,value float8,comment varchar(80),classid smallint REFERENCES event_classes);
+CREATE TABLE event_context(event_id integer PRIMARY KEY REFERENCES events,recording_id bigint REFERENCES das_recordings,start_sample integer,stop_sample integer,alignment_verified boolean,evidence text);
+CREATE TABLE event_reviews(id bigserial PRIMARY KEY,event_id integer REFERENCES events,previous_classid smallint,classid smallint,reviewer text,note text);

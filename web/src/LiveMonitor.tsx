@@ -1,4 +1,5 @@
 import { CALM_COLOR_MAX } from "./calmScale";
+import { liveHistoryQuery, mergeLiveHistory } from "./liveHistory";
 import CalmControls, {
   calmMetric,
   useCalm,
@@ -22,6 +23,7 @@ import {
   type Live,
   type MetricFrame,
   type Collection,
+  type ActivityHistory,
 } from "./types";
 const LiveCharts = lazy(() => import("./LiveCharts"));
 const empty: Collection = { type: "FeatureCollection", features: [] };
@@ -62,10 +64,13 @@ export default function LiveMonitor({
     const abort = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     let cached: { key: string; metric: MetricFrame } | null = null;
+    let history: ActivityHistory | undefined;
     async function poll() {
       try {
-        const next = await api<Live>("/live", { signal: abort.signal });
+        const next = await api<Live>(liveHistoryQuery(history), { signal: abort.signal });
         if (abort.signal.aborted) return;
+        history = mergeLiveHistory(history, next);
+        next.history = history;
         let metric: MetricFrame | null = null,
           metricError = "";
         setLoading(true);
@@ -131,7 +136,7 @@ export default function LiveMonitor({
       } finally {
         if (!abort.signal.aborted) {
           setLoading(false);
-          timer = setTimeout(poll, 5000);
+          timer = setTimeout(poll, 2000);
         }
       }
     }
@@ -148,6 +153,7 @@ export default function LiveMonitor({
   const publicationFresh =
     snapshot?.published_at == null ||
     clock / 1000 - snapshot.published_at <= 30;
+  const sampleAge = age == null ? null : Math.max(0, age - (snapshot?.duration ?? 0));
   const demo = snapshot?.demo === true;
   const publicationAge =
     snapshot?.published_at == null
@@ -160,7 +166,7 @@ export default function LiveMonitor({
       ? snapshot?.status === "demo" &&
         publicationAge != null &&
         publicationAge <= 30
-      : snapshot?.status === "live" && age != null && age <= 30);
+      : snapshot?.status === "live" && sampleAge != null && sampleAge <= 30);
   const live = fresh ? snapshot! : null;
   const calmEnabled = useCalm(calmPreference, live?.normalization);
   const displayed = useMemo(
@@ -452,7 +458,7 @@ export default function LiveMonitor({
           ? "Demo replay of archived files. Original timestamps are retained; current-map positions and weather alignment are provisional. No events are created. Display clears if the demo publisher stops for 30 seconds."
           : fresh
             ? "Charts and detection refer to this file. Map and profile show the published frame; heatmap and detection cover the whole file. Candidates require review."
-            : "Current visuals clear after 30 seconds without fresh acquisition. Network assets remain visible for orientation."}
+            : "Current visuals clear when the newest recorded sample or publication is over 30 seconds old. Network assets remain visible for orientation."}
       </p>
     </main>
   );

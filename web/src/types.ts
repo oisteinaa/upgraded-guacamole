@@ -128,7 +128,19 @@ export type Feature = {
 };
 export type Collection = { type: "FeatureCollection"; features: Feature[] };
 export type Geography = { masts: Collection; spans: Collection };
+export type ActivityHistory = {
+  key: string; channel_edges: number[]; window_seconds: number;
+  sample_interval: number; unit: string;
+  rows: { start: number; end: number; recording_id: number;
+    raw: (number | null)[]; raw_channels: (number | null)[];
+    calm: (number | null)[]; calm_channels: (number | null)[];
+    calm_raw: (number | null)[]; medians: (number | null)[] }[];
+};
 export type Live = {
+  history_delta?: boolean;
+  history_latest_end?: number | null;
+  history?: ActivityHistory;
+  history_note?: string;
   normalization?: Normalization;
   demo?: boolean;
   demo_token?: string;

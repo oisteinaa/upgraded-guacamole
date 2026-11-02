@@ -76,6 +76,11 @@ def publish_recording(recording_id, replay=False, rules=None, legacy_timezone=No
     }
     from .calm import live_activity
     payload["normalization"] = live_activity(recording)
+    from .live_history import recording_history
+    try:
+        payload["history_frames"] = recording_history(recording)
+    except (OSError, ValueError, KeyError) as exc:
+        payload["history_note"] = str(exc)
     eligible = recording["time_verified"] and recording["mapping_verified"] and recording["lid"] is not None
     if rules is not None and not eligible:
         payload["detection"] = {"status": "unavailable", "note": "Detection requires verified acquisition time and instrument/channel mapping"}
@@ -103,13 +108,25 @@ def publish_recording(recording_id, replay=False, rules=None, legacy_timezone=No
 def write_snapshot(payload):
     target = snapshot_path()
     target.parent.mkdir(parents=True, exist_ok=True)
+    payload = dict(payload)
+    frames = payload.pop("history_frames", None)
+    if frames is not None:
+        from .live_history import merge_history
+        try:
+            stored = json.loads(target.read_text())
+            previous = stored.get("history")
+            if payload.get("demo") and payload.get("acquisition_epoch", 0) < stored.get("acquisition_epoch", 0):
+                previous = None
+        except (OSError, ValueError):
+            previous = None
+        payload["history"] = merge_history(previous, frames)
     with tempfile.NamedTemporaryFile(mode="w", dir=target.parent, delete=False) as f:
         json.dump(payload, f, allow_nan=False)
         temporary = f.name
     os.replace(temporary, target)
 
 
-def load_snapshot(max_points=3000):
+def load_snapshot(max_points=3000, *, compact=False, history_key=None, history_after=None):
     try:
         with snapshot_path().open() as f:
             data = json.load(f)
@@ -119,8 +136,25 @@ def load_snapshot(max_points=3000):
             "points": [],
             "note": "No capture has been published",
         }
+    source_points = len(data["points"])
+    if compact:
+        # The monitor uses mapped metric features and acquisition history, not
+        # the legacy whole-file points/heatmap. Keep the on-disk evidence intact.
+        data["points"] = []
+        data.pop("heatmap", None)
+        if "normalization" in data:
+            data["normalization"].pop("heatmap", None)
+        history = data.get("history")
+        if history:
+            latest = max((r["end"] for r in history["rows"]), default=None)
+            delta = (history_key == history.get("key") and history_after is not None
+                     and latest is not None and history_after <= latest)
+            data["history_delta"] = delta
+            data["history_latest_end"] = latest
+            if delta:
+                history["rows"] = [r for r in history["rows"] if r["end"] > history_after]
     points = data["points"]
-    data["source_points"] = len(points)
+    data["source_points"] = source_points
     if len(points) > max_points:
         width = math.ceil(len(points) / max(1, max_points // 2))
         reduced = []
@@ -138,6 +172,10 @@ def load_snapshot(max_points=3000):
     data["display_points"] = len(data["points"])
     age = max(0, time.time() - data["published_at"])
     acquisition_age = max(0, time.time() - data["acquisition_epoch"]) if data.get("acquisition_epoch") is not None else None
+    # Acquisition timestamps mark the start of a file, not its newest sample.
+    duration = data.get("duration", 0)
+    duration = float(duration) if isinstance(duration, (int, float)) and math.isfinite(duration) and duration >= 0 else 0
+    sample_age = max(0, acquisition_age - duration) if acquisition_age is not None else None
     if data.get("demo") and os.getenv("DAS_DEMO_ENABLED") == "1":
         data.update(age_seconds=age, acquisition_age_seconds=acquisition_age,
                     status="demo_stale" if age > 30 else "demo_loading" if data.get("demo_loading") else "demo")
@@ -145,12 +183,13 @@ def load_snapshot(max_points=3000):
     data.update(
         age_seconds=age,
         acquisition_age_seconds=acquisition_age,
+        sample_age_seconds=sample_age,
         status="replay"
         if data["replay"]
         else "unverified"
         if not data["time_verified"]
         else "stale"
-        if acquisition_age is None or max(age, acquisition_age) > 30
+        if sample_age is None or max(age, sample_age) > 30
         else "live",
     )
     return data

@@ -1,4 +1,5 @@
 import CalmControls, { useCalm, type CalmPreference } from "./CalmControls";
+import RecordingBrowser, { type RecordingBrowserState } from "./RecordingBrowser";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Activity,
@@ -37,6 +38,7 @@ const line = (
   name,
 });
 export default function SignalPanel({
+  recordingBrowser,
   open,
   setOpen,
   recordings,
@@ -48,6 +50,7 @@ export default function SignalPanel({
   inspection,
   onInspection,
 }: {
+  recordingBrowser: RecordingBrowserState;
   open: boolean;
   setOpen: (open: boolean) => void;
   recordings: Recording[];
@@ -86,6 +89,19 @@ export default function SignalPanel({
     start: number;
     duration: number;
   } | null>(null);
+  const [previousSelection, setPreviousSelection] = useState({ rid, frame: inspection.frame });
+  if (previousSelection.rid !== rid || previousSelection.frame !== inspection.frame) {
+    setPreviousSelection({ rid, frame: inspection.frame });
+    if (previousSelection.rid !== rid) {
+      // A new file uses the current controls, including edits not yet loaded.
+      setView({ key: selectionKey, start, duration });
+    } else if (view?.key !== selectionKey) {
+      // Explicit frame navigation within a file still opens that frame.
+      setStart(inspection.frame * frameWidth);
+      setDuration(frameWidth);
+      setView(null);
+    }
+  }
   const windowStart =
     view?.key === selectionKey ? view.start : inspection.frame * frameWidth;
   const windowDuration =
@@ -94,10 +110,6 @@ export default function SignalPanel({
     setSpanId("");
     onInspection({ ...inspection, channel });
   };
-  useEffect(() => {
-    setStart(inspection.frame * frameWidth);
-    setDuration(frameWidth);
-  }, [selectionKey, frameWidth]);
   useEffect(() => {
     if (requestedRecording) {
       onInspection({ ...inspection, rid: requestedRecording, frame: 0 });
@@ -179,7 +191,7 @@ export default function SignalPanel({
     if (!open || !playing || busy || mapLoading || !signal) return;
     // Hold each loaded recording briefly, then advance. Never skip files while loading.
     const timer = setTimeout(() => {
-      const chronological = [...recordings].sort(
+      const chronological = recordingBrowser.recordings.filter(r => r.available).sort(
         (a, b) => a.acquisition_epoch - b.acquisition_epoch || a.id - b.id,
       );
       const next = chronological[chronological.findIndex(r => r.id === rid) + 1];
@@ -188,9 +200,6 @@ export default function SignalPanel({
         return;
       }
       setSource("archive");
-      setView(null);
-      setStart(0);
-      setDuration(Math.round(10 / next.dt) * next.dt);
       onInspection({ rid: next.id, channel, frame: 0 });
     }, 2000);
     return () => clearTimeout(timer);
@@ -199,11 +208,7 @@ export default function SignalPanel({
     if (error) setPlaying(false);
   }, [error]);
   function chooseRecording(value: number) {
-    const r = recordings.find((v) => v.id === value);
-    onInspection({ rid: value, channel: r?.first_channel ?? 0, frame: 0 });
-    setView(null);
-    setStart(0);
-    setDuration(Math.min(10, (r?.samples ?? 1) * (r?.dt ?? 1)));
+    onInspection({ ...inspection, rid: value, frame: 0 });
     setPlaying(false);
   }
   function zoom(a: number, b: number) {
@@ -299,23 +304,10 @@ export default function SignalPanel({
       </div>
       {open && (
         <>
+          {source === "archive" && <RecordingBrowser browser={recordingBrowser} rid={rid} choose={chooseRecording} />}
           <div className="signal-controls">
             {source === "archive" ? (
               <>
-                <label>
-                  Recording
-                  <select
-                    aria-label="Recording"
-                    value={rid}
-                    onChange={(e) => chooseRecording(+e.target.value)}
-                  >
-                    {recordings.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.relative_path} · {number(r.samples * r.dt)} s
-                      </option>
-                    ))}
-                  </select>
-                </label>
                 <label>
                   Channel ID
                   <input
@@ -630,8 +622,6 @@ export default function SignalPanel({
                   onClick={() => {
                     if (!playing) {
                       setSource("archive");
-                      setView(null);
-                      onInspection({ ...inspection, frame: 0 });
                     }
                     setPlaying(!playing);
                   }}

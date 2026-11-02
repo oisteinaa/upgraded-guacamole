@@ -7,7 +7,8 @@ from pathlib import Path
 
 import numpy as np
 
-CLASSES = ["Normal Operations", "Ice Loading", "Wind Galloping", "External Interference"]
+CLASSES = ["Normal Operations", "Ice Loading", "Wind Galloping", "External Interference",
+           "Structural / Attachment Anomaly", "Sensing / Acquisition Artefact"]
 FEATURES = ["rms", "ac_rms", "peak", "crest_factor", "kurtosis",
             "dominant_hz", "low_power_fraction", "spectral_entropy",
             "spatial_rms_cv", "mean_shift", "temperature", "wind_speed",
@@ -57,6 +58,12 @@ def extract_features(data, sample_rate, weather=None):
 def read_window(path, start, stop, channel_start, channel_stop):
     """Read an explicit half-open window without loading the entire recording."""
     import h5py
+    if Path(path).suffix == '.npz':
+        with np.load(path, allow_pickle=False) as recording:
+            data=recording['data']
+            if not (0 <= start < stop <= data.shape[0] and 0 <= channel_start < channel_stop <= data.shape[1]):
+                raise ValueError('Invalid preserved evidence bounds')
+            return data[start:stop, channel_start:channel_stop].astype(float)*float(recording['scale'])
     with h5py.File(path, "r") as recording:
         data = recording["data"]
         if data.ndim != 2 or not (0 <= start < stop <= data.shape[0]):
@@ -72,6 +79,8 @@ def load_manifest(path):
         rows = list(csv.DictReader(stream))
     if not rows:
         raise ValueError("Manifest is empty")
+    configs={r.get('configuration') for r in rows if r.get('configuration')}
+    if len(configs)>1:raise ValueError('Train separate models for incompatible acquisition configurations')
     vectors, labels, groups = [], [], []
     file_groups = {}
     for row in rows:
@@ -96,9 +105,10 @@ def train(manifest, output):
     from sklearn.model_selection import StratifiedGroupKFold
 
     x, y, groups = load_manifest(manifest)
-    if set(y) != set(CLASSES):
-        raise ValueError("Training requires labeled examples of all four classes")
-    if any(len(set(groups[y == label])) < 3 for label in CLASSES):
+    classes=[c for c in CLASSES if c in set(y)]
+    if len(classes)<2:
+        raise ValueError("Training requires at least two supported classes")
+    if any(len(set(groups[y == label])) < 3 for label in classes):
         raise ValueError("Each class requires at least three independent recording/session groups")
     def make_model():
         return RandomForestClassifier(n_estimators=300, min_samples_leaf=2,
@@ -106,18 +116,18 @@ def train(manifest, output):
     predictions = np.empty(len(y), dtype=object)
     folds = []
     for train_indices, test_indices in StratifiedGroupKFold(3, shuffle=True, random_state=42).split(x, y, groups):
-        if set(y[train_indices]) != set(CLASSES) or set(y[test_indices]) != set(CLASSES):
+        if set(y[train_indices]) != set(classes) or set(y[test_indices]) != set(classes):
             raise ValueError("Grouped folds lack classes; collect more independent labeled sessions")
         model = make_model().fit(x[train_indices], y[train_indices])
         predictions[test_indices] = model.predict(x[test_indices])
         folds.append({"train_groups": sorted(set(groups[train_indices])),
                       "test_groups": sorted(set(groups[test_indices]))})
-    report = {"classes": CLASSES, "classification_report": classification_report(
-        y, predictions, labels=CLASSES, output_dict=True, zero_division=0),
-        "confusion_matrix": confusion_matrix(y, predictions, labels=CLASSES).tolist(),
+    report = {"classes": classes, "classification_report": classification_report(
+        y, predictions, labels=classes, output_dict=True, zero_division=0),
+        "confusion_matrix": confusion_matrix(y, predictions, labels=classes).tolist(),
         "folds": folds, "samples": len(y)}
     model = make_model().fit(x, y)
-    joblib.dump({"version": 1, "features": FEATURES, "classes": CLASSES,
+    joblib.dump({"version": 1, "features": FEATURES, "classes": classes,
                  "sklearn_version": sklearn.__version__, "model": model}, output)
     Path(str(output) + ".metrics.json").write_text(json.dumps(report, indent=2))
     return report
@@ -127,7 +137,7 @@ def classify_window(artifact, data, sample_rate, weather=None, threshold=0.7):
     """Scores are uncalibrated model probabilities, not physical severity."""
     if not 0 <= threshold <= 1:
         raise ValueError("Threshold must be between zero and one")
-    if artifact.get("version") != 1 or artifact.get("features") != FEATURES or artifact.get("classes") != CLASSES:
+    if artifact.get("version") != 1 or artifact.get("features") != FEATURES or not artifact.get("classes") or not set(artifact["classes"]).issubset(CLASSES):
         raise ValueError("Incompatible model artifact")
     features = extract_features(data, sample_rate, weather)
     model = artifact["model"]
@@ -135,7 +145,7 @@ def classify_window(artifact, data, sample_rate, weather=None, threshold=0.7):
         [[features[k] for k in FEATURES]])[0])))
     label = max(probabilities, key=probabilities.get)
     return {"predicted_class": label, "needs_review": probabilities[label] < threshold,
-            "probabilities": {k: probabilities[k] for k in CLASSES},
+            "probabilities": {k: probabilities[k] for k in artifact["classes"]},
             "window_duration_s": len(data) / sample_rate,
             "measurements": {k: features[k] for k in ("rms", "ac_rms", "peak", "dominant_hz")}}
 

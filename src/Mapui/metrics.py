@@ -164,7 +164,10 @@ def metric_frame(recording, frame=0, low=1.0, high=10.0):
         "start": a * recording["dt"],
         "end": b * recording["dt"],
         "actual_duration": (b - a) * recording["dt"],
-        "complete": b - a == width,
+        # DAS file boundaries can contain one sample fewer than round(10 / dt).
+        # Accept at most 0.1% duration difference; retain all actual sample bounds.
+        "complete": b - a == width or (width >= 1000 and b - a == width - 1),
+        "sample_shortfall": width - (b - a),
         "nominal_duration": WINDOW_SECONDS,
         "resolution_hz": resolution,
         "processing": VERSION,

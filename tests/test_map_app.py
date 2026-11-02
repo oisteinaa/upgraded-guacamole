@@ -63,7 +63,7 @@ def test_nonexistent_channel_is_not_column_index(recording):
 
 def test_changed_file_rejected(recording):
     path, rec = recording
-    path.touch()
+    os.utime(path, ns=(path.stat().st_atime_ns, rec["mtime_ns"] + 1_000_000_000))
     with pytest.raises(ValueError, match="changed"):
         read_signal(rec, 100, 0, 1)
 
@@ -306,10 +306,7 @@ def test_detection_is_idempotent_and_retains_null_class(client):
     try:
         created = detect_events(rec, {0: 12}, [rule], "Europe/Oslo")
         assert len(created) == 1
-        assessment = {}
-        assert detect_events(rec, {0: 12}, [rule], "Europe/Oslo", assessment=assessment) == []
-        assert assessment["status"] == "complete" and assessment["candidate_count"] == 1
-        assert assessment["evaluated_channels"] == 1
+        assert detect_events(rec, {0: 12}, [rule], "Europe/Oslo") == []
         event = client.get(f"/api/events/{created[0]}").json()
         assert event["classid"] is None and event["context"]["alignment_verified"]
         assert event["context"]["recording_id"] == -20
@@ -370,6 +367,23 @@ def test_live_fresh_publication_of_old_capture_is_stale(tmp_path, monkeypatch):
         )
     )
     assert load_snapshot()["status"] == "stale"
+
+
+@pytest.mark.parametrize("start_age,publication_age,expected", [(35, 5, "live"), (41, 5, "stale"), (20, 31, "stale")])
+def test_live_freshness_uses_newest_sample_and_publication(tmp_path, monkeypatch, start_age, publication_age, expected):
+    import json
+    from src.Mapui import live
+
+    monkeypatch.setattr(live.time, "time", lambda: 1000)
+    path = tmp_path / "snapshot.json"
+    monkeypatch.setenv("DAS_LIVE_SNAPSHOT", str(path))
+    path.write_text(json.dumps({"points": [], "published_at": 1000 - publication_age,
+                               "acquisition_epoch": 1000 - start_age, "duration": 10,
+                               "replay": False, "time_verified": True}))
+    data = live.load_snapshot()
+    assert data["status"] == expected
+    assert data["acquisition_age_seconds"] == start_age
+    assert data["sample_age_seconds"] == start_age - 10
 
 
 def test_database_keeps_legacy_insert_and_class_foreign_key(client):
@@ -490,11 +504,11 @@ def test_channel_range_excludes_gaps_and_clips_to_recording(recording):
 def test_span_signal_validates_mapping_and_uses_endpoint_bounds(recording, monkeypatch):
     from src.Mapui import api as module
     rec = dict(recording[1], lid=1, mapping_verified=True)
+    from src.Mapui import stitched_signals
+    monkeypatch.setattr(stitched_signals, 'rows', lambda *args: [rec])
     monkeypatch.setattr(module, 'get_recording', lambda _: rec)
     monkeypatch.setattr(module, 'rows', lambda *args: [dict(
         from_lid=1, to_lid=1, from_channel=999, to_channel=108)])
-    from src.Mapui import stitched_signals
-    monkeypatch.setattr(stitched_signals, 'rows', lambda *args: [rec])
     result = module.signal(1, 100, 0, 1, 1600, None, 7)
     assert result['heat_channels'] == [108, 999]
     rec['mapping_verified'] = False

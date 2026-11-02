@@ -1,0 +1,8 @@
+[Unit]
+Description=Monday 04:00 UTC integrity reporting
+[Timer]
+OnCalendar=Mon *-*-* 04:00:00 UTC
+Persistent=true
+Unit=sensnet-reports.service
+[Install]
+WantedBy=timers.target

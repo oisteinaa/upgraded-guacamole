@@ -27,11 +27,11 @@ class FeaturesTest(unittest.TestCase):
 
     def test_probability_order_and_review(self):
         class Model:
-            classes_ = list(reversed(CLASSES))
+            classes_ = list(reversed(CLASSES[:4]))
             def predict_proba(self, x):
                 return [[.4, .3, .2, .1]]
         result = classify_window({'version': 1, 'features': FEATURES,
-                                  'classes': CLASSES, 'model': Model()},
+                                  'classes': CLASSES[:4], 'model': Model()},
                                  np.zeros((100, 1)), 10)
         self.assertEqual(result['predicted_class'], 'External Interference')
         self.assertTrue(result['needs_review'])

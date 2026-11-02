@@ -310,3 +310,46 @@ Current coverage is 12,610/12,612 channels; two boundary channels remain raw-onl
 The older 8 m range also retains its own reference (12,614/12,616 channels).
 Per-configuration fitting dates and provenance are preserved. See
 `docs/calm-baseline.md` and `results/calm-baseline-20261014/` for validation.
+
+### Weekly integrity reports (2026-10-23)
+
+Migration `006_reports.sql` is applied on server `sensnetdb`. The Reports tab
+provides self-contained house-style reports, persistent finding review, classified
+closure (or Inconclusive), duplicate-safe human event publication/linking, and
+separate evidence-window verification for training. AI never creates events,
+closes findings or verifies labels. Two additional event class names are
+Structural / Attachment Anomaly and Sensing / Acquisition Artefact; existing
+class and metric IDs are preserved. See `docs/reports.md` for semantics and
+`tests/report_db_checks.py` for the isolated workflow checks.
+
+The user timer `sensnet-reports.timer` runs Mondays at 04:00 UTC, invoking
+`scripts/run_reports_server.sh --weekly` in `.venv-reports`. The first next run
+is 2026-10-26 04:00 UTC. It covers the previous completed UTC week with 30-day
+context. Report files and preserved raw NPZ evidence live in `.local/reports`;
+do not apply the rolling recording-archive expiry policy to these files.
+Training ZIP export includes only explicitly verified windows and groups related
+findings, recurrences, shared recordings and UTC recording days. Train separately
+per acquisition configuration; no model is automatically trained or activated.
+
+Historical report 1 imports nine unverified October 22 candidates. Manual report
+2 contains 8 continuing, 4 new and 1 unavailable follow-up observation, using
+1,304 sampled source windows with actual coverage October 5–23. These counts are
+a snapshot, not a current inventory. No training labels were verified by this
+implementation. AI integration is ready but the server key was not configured
+at deployment; configure `.local/report-ai.env` (mode 600) and use
+`bash scripts/run_reports_server.sh --retry-ai 2` to interpret the saved example.
+
+Rollback source tag: `pre-weekly-reports-20261023`. The deployed server contained
+uncommitted work, so its authoritative backup is
+`/home/inst/oistein/rollback-weekly-reports-20261023/`, including application,
+settings, calm baselines and a PostgreSQL dump. Application rollback can retain
+the additive report schema; a whole-database restore would erase later work.
+Only `sensnet-observatory.service` was restarted; genuine live capture remains.
+
+AI configuration update (2026-10-23): the user placed the key in
+`/home/inst/upgraded-guacamole/.local/report-ai.env`; it was copied to the
+deployed checkout's `.local/report-ai.env`. Both files have permissions 600.
+Report 2 AI retry reached the API but returned HTTP 429 with
+`credit_balance_exhausted`. The numerical report remains published. After API
+credits are added, rerun `bash scripts/run_reports_server.sh --retry-ai 2`.
+Error metadata now stores safe API code/type fields without raw error bodies.

@@ -1,4 +1,5 @@
 import { CALM_COLOR_MAX } from "./calmScale";
+import { useRecordingBrowser } from "./RecordingBrowser";
 import CalmControls, { calmMetric, useCalm, type CalmPreference } from "./CalmControls";
 import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createRoot } from "react-dom/client";
@@ -24,6 +25,7 @@ import "@fontsource/ibm-plex-sans-condensed/latin-700.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 import Map from "./Map";
 import LiveMonitor from "./LiveMonitor";
+import Reports from "./Reports";
 import SignalPanel from "./SignalPanel";
 import MetricControls from "./MetricControls";
 import EventLayerControls, { defaultEventLayer } from "./EventLayerControls";
@@ -36,7 +38,6 @@ import {
   type Overview,
   type EventRow,
   type EventDetail,
-  type Recording,
   type Geography,
   type Feature,
   type Collection,
@@ -74,6 +75,8 @@ function App() {
     channel: 0,
     frame: 0,
   });
+  const recordingBrowser = useRecordingBrowser(inspection, setInspection);
+  const recordings = recordingBrowser.recordings;
   const [metric, setMetric] = useState<MetricName>("ac_rms");
   const [band, setBand] = useState<[number, number]>([1, 10]);
   const [scale, setScale] = useState<ColorScale>({
@@ -127,7 +130,6 @@ function App() {
   }, [inspection.rid, inspection.frame, metric, band, lid, mode]);
   const [overview, setOverview] = useState<Overview | null>(null),
     [geo, setGeo] = useState<Geography | null>(null),
-    [recordings, setRecordings] = useState<Recording[]>([]),
     [events, setEvents] = useState<EventRow[]>([]),
     [total, setTotal] = useState(0),
     [locations, setLocations] = useState<Collection>(empty);
@@ -160,22 +162,11 @@ function App() {
     Promise.all([
       api<Overview>("/overview", { signal: abort.signal }),
       api<Geography>("/map", { signal: abort.signal }),
-      api<Recording[]>("/recordings", { signal: abort.signal }),
     ])
-      .then(([o, g, r]) => {
+      .then(([o, g]) => {
         setOverview(o);
         setGeo(g);
-        setRecordings(r);
         setLid(o.mapping_lids[0] ?? 0);
-        const first = [...r].sort(
-          (a, b) => a.acquisition_epoch - b.acquisition_epoch,
-        )[0];
-        if (first)
-          setInspection({
-            rid: first.id,
-            channel: first.first_channel,
-            frame: 0,
-          });
       })
       .catch((e) => {
         if (e.name !== "AbortError") setError(e.message);
@@ -373,11 +364,12 @@ function App() {
             <Radio size={15} />
             Live monitor
           </button>
+          <button className={mode === "reports" ? "active" : ""} onClick={() => setMode("reports")}>Reports</button>
         </nav>
         <div className="environment">
           <i />
           {overview?.environment ?? "Connecting…"}
-          <small>{mode === "live" ? "Acquisition / demo monitor" : "Recording investigation"}</small>
+          <small>{mode === "live" ? "Acquisition / demo monitor" : mode === "reports" ? "Weekly integrity review" : "Recording investigation"}</small>
         </div>
       </header>
       {mode === "investigate" && <div className="summary-bar">
@@ -416,7 +408,7 @@ function App() {
           <button onClick={() => window.location.reload()}>Retry</button>
         </div>
       )}
-      {mode === "live" ? <LiveMonitor geo={geo} overview={overview} /> : <>
+      {mode === "reports" ? <Reports overview={overview} onEvent={selectEvent} onInspect={(rid,channel)=>{setEvent(null);setSelected(null);setInspection({rid,channel,frame:0});setRequestedRecording(rid);setSignalVisible(true);setMode("investigate");}} /> : mode === "live" ? <LiveMonitor geo={geo} overview={overview} /> : <>
       <main className={`workspace ${signalVisible ? "" : "signal-hidden"}`}>
         <aside className="event-sidebar">
           <div className="panel-title">
@@ -685,7 +677,7 @@ function App() {
               setEvent(null);
               setInspection(i);
             }}
-            recordings={recordings}
+            recordings={recordings.filter(r => r.available)}
             lid={lid}
             setLid={setLid}
             lids={overview?.mapping_lids ?? []}
@@ -990,6 +982,7 @@ function App() {
         </aside>
       </main>
       <SignalPanel
+        recordingBrowser={recordingBrowser}
         mapLoading={metricBusy}
         open={signalVisible}
         setOpen={setSignalVisible}

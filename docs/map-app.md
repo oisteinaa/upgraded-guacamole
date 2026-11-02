@@ -376,7 +376,19 @@ Replay, offline, unverified-time, connection-error and stale states display
 explicit status and remove the signal overlay, retaining static network assets
 for orientation. Live AC RMS uses the published recording/frame, independently
 of the investigation selection. The previous live frame may remain during a
-replacement read, but only while its acquisition age is within 30 seconds.
+replacement read, but only while its newest sample and publication are within
+30 seconds. Acquisition timestamps mark file starts; freshness subtracts the
+recorded duration so collecting a ten-second file does not consume this margin.
+Polling waits two seconds after each completed update.
+The monitor requests `/api/live?compact=true`, omitting legacy whole-file points
+and heatmaps that it does not display. After the initial history download it
+sends `history_key` and `history_after` (latest merged frame end) to fetch only
+new history rows. The browser merges these by acquisition bounds and retains
+the same 15-minute window, raw/calm peaks and explicit recording gaps. A changed
+configuration or replay rewind returns a full replacement. The default API and
+on-disk snapshot retain the complete payload. This avoids retransmitting the
+whole 15-minute history before every map-frame request; freshness limits remain
+unchanged.
 At deployment the server `/api/live` reports offline: no capture published.
 
 
@@ -433,7 +445,7 @@ or class predictions are supplied. Detection failures retain current signal
 summaries; old publishers show missing summaries/assessment explicitly.
 
 Panels switch file identity together after the corresponding map request and
-clear when acquisition or publication becomes stale after 30 seconds. A failed
+clear when the newest recorded sample or publication becomes stale after 30 seconds. A failed
 map request reports the map error while retaining the same file's available
 charts. Offline, replay and unverified-time snapshots never populate live charts.
 
