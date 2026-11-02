@@ -1,0 +1,11 @@
+[Unit]
+Description=Sensnet weekly integrity report in Docker
+After=network-online.target
+[Service]
+Type=oneshot
+WorkingDirectory=/home/inst/oistein/upgraded-guacamole
+ExecStart=/usr/bin/docker compose --env-file deploy/docker/compose.env run --rm --no-deps reports
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=6h
+UMask=0077

@@ -1,0 +1,13 @@
+.git
+.local
+.env
+**/*.env
+.venv*
+**/__pycache__
+**/node_modules
+web/dist
+results
+*.dump
+*.tar*
+**/*.hdf5
+**/*.h5

@@ -56,6 +56,12 @@ async def same_origin(request: Request, call_next):
     return response
 
 
+@app.get("/api/health")
+def health():
+    """Process liveness; database readiness is checked separately."""
+    return {"status": "ok"}
+
+
 @app.get("/api/overview")
 def overview():
     counts = rows("""SELECT count(*) AS events, count(*) FILTER (WHERE classid IS NULL) AS unclassified,

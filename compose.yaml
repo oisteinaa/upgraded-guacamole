@@ -1,0 +1,40 @@
+x-common: &common
+  image: sensnet-observatory:local
+  build: .
+  network_mode: host
+  user: "${DAS_CONTAINER_UID:?Set host UID}:${DAS_CONTAINER_GID:?Set host GID}"
+  init: true
+  working_dir: /app
+  volumes:
+    - type: bind
+      source: /raid1
+      target: /raid1
+      read_only: true
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${DAS_STATE_DIR:?Set absolute existing state directory}
+      target: /app/.local
+      bind:
+        create_host_path: false
+  stop_grace_period: 30s
+services:
+  observatory:
+    <<: *common
+    env_file: ${DAS_CONTAINER_ENV:-./deploy/docker/app.env}
+    restart: unless-stopped
+  reports:
+    <<: *common
+    profiles: [reports]
+    env_file:
+      - ${DAS_CONTAINER_ENV:-./deploy/docker/app.env}
+      - ${DAS_REPORT_AI_ENV:-./deploy/docker/report-ai.env}
+    environment:
+      DAS_EXISTING_METRIC_CACHE: /app/.local/metric-cache
+      DAS_METRIC_CACHE: /app/.local/report-metric-cache
+      MPLCONFIGDIR: /app/.local/report-matplotlib
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    command: [python, -m, src.Mapui.report_worker, --weekly]
+    healthcheck:
+      disable: true
